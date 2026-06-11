@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/citation-monitor/cron",
+      "schedule": "0 9 * * 1"
+    }
+  ]
+}

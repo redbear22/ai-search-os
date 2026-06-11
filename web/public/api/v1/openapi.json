@@ -1,0 +1,214 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "AI Search OS API v1 (Enterprise)",
+    "version": "1.0.0",
+    "description": "Enterprise API for agency automation, insights, and client management."
+  },
+  "servers": [{ "url": "/api/v1", "description": "API v1 base path" }],
+  "security": [{ "ApiKeyAuth": [] }, { "BearerAuth": [] }],
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key"
+      },
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "API Key or OAuth token"
+      }
+    },
+    "schemas": {
+      "SuccessEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "meta": { "type": "object" }
+        }
+      },
+      "ErrorEnvelope": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": { "type": "string" },
+              "message": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/clients": {
+      "get": {
+        "summary": "List agency clients",
+        "tags": ["Clients"],
+        "responses": { "200": { "description": "Client list" } }
+      },
+      "post": {
+        "summary": "Create client",
+        "tags": ["Clients"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "domain": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Client created" } }
+      }
+    },
+    "/clients/{id}/audits": {
+      "get": {
+        "summary": "Get audit history",
+        "tags": ["Clients"],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Audit history" } }
+      },
+      "post": {
+        "summary": "Trigger audit (async)",
+        "tags": ["Clients"],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "202": { "description": "Audit queued" } }
+      }
+    },
+    "/clients/{id}/reports": {
+      "post": {
+        "summary": "Generate white-label report",
+        "tags": ["Clients"],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": { "format": { "type": "string", "enum": ["json", "pdf"] } }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Report data" } }
+      }
+    },
+    "/benchmarks": {
+      "get": {
+        "summary": "Industry benchmarks",
+        "tags": ["Insights"],
+        "responses": { "200": { "description": "Benchmark data" } }
+      }
+    },
+    "/predictions": {
+      "get": {
+        "summary": "AI-powered predictions",
+        "tags": ["Insights"],
+        "parameters": [
+          { "name": "clientId", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Predictions" } }
+      }
+    },
+    "/webhooks": {
+      "get": { "summary": "List webhooks", "tags": ["Insights"], "responses": { "200": { "description": "Webhook list" } } },
+      "post": {
+        "summary": "Configure webhook",
+        "tags": ["Insights"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["url", "events"],
+                "properties": {
+                  "url": { "type": "string" },
+                  "events": { "type": "array", "items": { "type": "string" } },
+                  "secret": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Webhook created" } }
+      }
+    },
+    "/automation/schedule": {
+      "post": {
+        "summary": "Schedule recurring audits",
+        "tags": ["Automation"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["clientId"],
+                "properties": {
+                  "clientId": { "type": "string" },
+                  "frequency": { "type": "string", "enum": ["weekly", "biweekly", "monthly"] },
+                  "enabled": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Schedule updated" } }
+      }
+    },
+    "/automation/status": {
+      "get": {
+        "summary": "Automation health",
+        "tags": ["Automation"],
+        "responses": { "200": { "description": "Status summary" } }
+      }
+    },
+    "/automation/runs": {
+      "delete": {
+        "summary": "Cancel scheduled run",
+        "tags": ["Automation"],
+        "parameters": [
+          { "name": "runId", "in": "query", "schema": { "type": "string" } },
+          { "name": "clientId", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Run cancelled" } }
+      }
+    },
+    "/oauth/token": {
+      "post": {
+        "summary": "OAuth2 client_credentials token",
+        "tags": ["Auth"],
+        "security": [],
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "required": ["grant_type", "client_id", "client_secret"],
+                "properties": {
+                  "grant_type": { "type": "string", "enum": ["client_credentials"] },
+                  "client_id": { "type": "string" },
+                  "client_secret": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Access token" } }
+      }
+    }
+  },
+  "tags": [
+    { "name": "Clients" },
+    { "name": "Insights" },
+    { "name": "Automation" },
+    { "name": "Auth" }
+  ]
+}

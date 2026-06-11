@@ -1,0 +1,36 @@
+# Environment
+.env
+.env.local
+.venv/
+venv/
+node_modules/
+web/node_modules/
+web/.next/
+next-env.d.ts
+web/analytics-data.json
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Data (per-site SQLite lives outside repo by default)
+data/
+*.db
+*.db-wal
+*.db-shm
+
+# Runtime
+logs/
+.tmp/
+.ce/
+
+# Credentials
+*credentials*.json
+gsc_oauth_credentials.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

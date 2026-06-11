@@ -1,0 +1,12 @@
+{
+  "data_dir": "D:/AISearchOS/data",
+  "sites": [
+    {
+      "id": "demo",
+      "name": "Demo Site",
+      "domain": "example.com",
+      "db_file": "demo_site.db",
+      "kind": "affiliate"
+    }
+  ]
+}

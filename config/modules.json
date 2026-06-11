@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "modules": {
+    "gsc": { "status": "planned", "tier": 1 },
+    "serp": { "status": "starter", "tier": 1 },
+    "ai_answer_hub": { "status": "starter", "tier": 1 },
+    "competitive_audit": { "status": "starter", "tier": 2 },
+    "editorial_pipeline": { "status": "starter", "tier": 1 },
+    "agent_jobs": { "status": "starter", "tier": 1 },
+    "agentic_os": { "status": "starter", "tier": 2 },
+    "qa_gate": { "status": "planned", "tier": 2 },
+    "wordpress_publish": { "status": "planned", "tier": 3 }
+  }
+}
