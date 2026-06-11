@@ -1,18 +1,16 @@
 import { PrismaClient } from "@prisma/client";
 import { generateRecordId } from "@/lib/ids";
 
-const DEFAULT_DATABASE_URL = "file:./prisma/dev.db";
-
 const globalForPrisma = globalThis as unknown as {
   prisma: ReturnType<typeof createExtendedPrismaClient> | undefined;
 };
 
 export function getDatabaseUrl(): string {
-  return process.env.DATABASE_URL?.trim() || DEFAULT_DATABASE_URL;
+  return process.env.DATABASE_URL?.trim() ?? "";
 }
 
 export function isDatabaseConfigured(): boolean {
-  return true;
+  return Boolean(process.env.DATABASE_URL?.trim());
 }
 
 function assignUuidId(data: unknown): void {
@@ -24,10 +22,6 @@ function assignUuidId(data: unknown): void {
 }
 
 function createExtendedPrismaClient() {
-  if (!process.env.DATABASE_URL) {
-    process.env.DATABASE_URL = DEFAULT_DATABASE_URL;
-  }
-
   const base = new PrismaClient({
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   });
