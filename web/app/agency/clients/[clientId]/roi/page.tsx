@@ -105,8 +105,8 @@ function effortVariant(effort: string): "default" | "secondary" | "destructive" 
 }
 
 export default function ClientROIPage() {
-  const params = useParams();
-  const clientId = params.clientId as string;
+  const params = useParams<{ clientId: string }>();
+  const clientId = params?.clientId ?? "";
   const [data, setData] = useState<PredictiveROI | null>(null);
   const [loading, setLoading] = useState(true);
 

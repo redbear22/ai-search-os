@@ -188,7 +188,7 @@ export function ClarityComparisonView({
       if (live) out[p] = live;
     }
     return out;
-  }, [getResponse, clarity]);
+  }, [getResponse]);
 
   const comparisons = useMemo(
     () => buildPlatformComparisons(clarity, liveResponses),

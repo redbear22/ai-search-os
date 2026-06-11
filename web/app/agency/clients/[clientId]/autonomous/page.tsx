@@ -42,8 +42,8 @@ const TRIGGER_LABELS: Record<string, string> = {
 };
 
 export default function AutonomousAuditPage() {
-  const params = useParams();
-  const clientId = params.clientId as string;
+  const params = useParams<{ clientId: string }>();
+  const clientId = params?.clientId ?? "";
   const { data: session } = useSession();
   const { toast } = useToast();
   const canManage = session?.user?.agencyRole

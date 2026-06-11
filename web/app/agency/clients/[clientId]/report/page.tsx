@@ -22,8 +22,8 @@ import { exportWhiteLabelReportPdf } from "@/lib/white-label-report";
 import type { ReportFrequency, WhiteLabelReportData } from "@/types/white-label-report";
 
 export default function ClientReportPage() {
-  const params = useParams();
-  const clientId = params.clientId as string;
+  const params = useParams<{ clientId: string }>();
+  const clientId = params?.clientId ?? "";
   const { toast } = useToast();
 
   const [report, setReport] = useState<WhiteLabelReportData | null>(null);

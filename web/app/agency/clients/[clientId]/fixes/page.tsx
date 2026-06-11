@@ -39,8 +39,8 @@ type ClientGap = {
 };
 
 export default function AutomatedFixPipelinePage() {
-  const params = useParams();
-  const clientId = params.clientId as string;
+  const params = useParams<{ clientId: string }>();
+  const clientId = params?.clientId ?? "";
   const { toast } = useToast();
 
   const [runs, setRuns] = useState<FixPipelineRunView[]>([]);

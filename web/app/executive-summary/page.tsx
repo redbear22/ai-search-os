@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuditStore } from "@/store/auditStore";
 import { useKPIStore } from "@/store/kpiStore";
 import { useActionStore } from "@/store/actionStore";
@@ -69,9 +69,10 @@ export default function ExecutiveSummaryPage() {
     return () => unsubs.forEach((u) => u());
   }, []);
 
-  const auditData = isCompleted
-    ? { discoverability, clarity, authority, trust }
-    : null;
+  const auditData = useMemo(
+    () => (isCompleted ? { discoverability, clarity, authority, trust } : null),
+    [isCompleted, discoverability, clarity, authority, trust]
+  );
 
   const currentVersion = versions.find((v) => v.id === currentVersionId);
 

@@ -17,8 +17,8 @@ type ClientDetail = {
 };
 
 export default function ManageClientPage() {
-  const params = useParams();
-  const clientId = params.clientId as string;
+  const params = useParams<{ clientId: string }>();
+  const clientId = params?.clientId ?? "";
   const [client, setClient] = useState<ClientDetail | null>(null);
 
   useEffect(() => {

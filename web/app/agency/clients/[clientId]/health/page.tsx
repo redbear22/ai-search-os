@@ -35,8 +35,8 @@ function healthColor(score: number): string {
 }
 
 export default function ClientHealthPage() {
-  const params = useParams();
-  const clientId = params.clientId as string;
+  const params = useParams<{ clientId: string }>();
+  const clientId = params?.clientId ?? "";
   const [data, setData] = useState<ClientHealthDashboard | null>(null);
   const [loading, setLoading] = useState(true);
 

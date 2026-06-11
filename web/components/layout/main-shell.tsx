@@ -6,7 +6,7 @@ import { MobileNav } from "@/components/layout/mobile-nav";
 import { Sidebar } from "@/components/layout/sidebar";
 
 export function MainShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
   const isAuthPage = pathname === "/login" || pathname.startsWith("/auth");
   const isLandingPage = pathname === "/";
   const isClientPortal = pathname.startsWith("/portal/");

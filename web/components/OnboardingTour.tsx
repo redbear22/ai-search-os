@@ -113,7 +113,7 @@ function waitForElement(selector: string, timeoutMs = 8000): Promise<Element | n
 
 export function OnboardingTour() {
   const router = useRouter();
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
   const { status } = useSession();
   const [tourCompleted, setTourCompleted] = useState(true);
   const driverRef = useRef<Driver | null>(null);

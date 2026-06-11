@@ -7,8 +7,8 @@ import { brandingToCssVars, googleFontStylesheetUrl } from "@/lib/agency-brandin
 import type { ClientPortalAudit, ClientPortalDashboardData } from "@/types/client-portal";
 
 export default function ClientPortalDashboard() {
-  const params = useParams();
-  const accessKey = params.accessKey as string;
+  const params = useParams<{ accessKey: string }>();
+  const accessKey = params?.accessKey ?? "";
   const [client, setClient] = useState<ClientPortalDashboardData["client"] | null>(null);
   const [audits, setAudits] = useState<ClientPortalAudit[]>([]);
   const [loading, setLoading] = useState(true);

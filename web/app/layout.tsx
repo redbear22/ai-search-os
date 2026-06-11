@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { GoogleAnalytics } from "@next/third-parties/google";
 import { Inter } from "next/font/google";
+import { GoogleAnalytics } from "@next/third-parties/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { getSession } from "@/lib/session";
@@ -9,8 +9,9 @@ import { Toaster } from "sonner";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { cn } from "@/lib/utils";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
   title: {
@@ -49,8 +50,8 @@ export default async function RootLayout({
   const session = await getSession();
 
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
-      <body className={`${inter.className} bg-background text-foreground`}>
+    <html lang="en" className={cn("dark", inter.variable)} suppressHydrationWarning>
+      <body className={cn(inter.className, "bg-background text-foreground")}>
         <Providers session={session}>
           <ErrorBoundary>
             <MainShell>{children}</MainShell>

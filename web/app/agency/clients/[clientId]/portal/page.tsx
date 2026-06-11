@@ -18,8 +18,8 @@ type ClientPortal = {
 };
 
 export default function ClientPortalPage() {
-  const params = useParams();
-  const clientId = params.clientId as string;
+  const params = useParams<{ clientId: string }>();
+  const clientId = params?.clientId ?? "";
   const { toast } = useToast();
   const [client, setClient] = useState<ClientPortal | null>(null);
 

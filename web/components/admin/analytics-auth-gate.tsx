@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 
 export function AnalyticsAuthGate({ configured }: { configured: boolean }) {
   const searchParams = useSearchParams();
-  const urlKeyError = searchParams.get("key")
+  const urlKeyError = searchParams?.get("key")
     ? "That URL key did not match. Use the unlock form below."
     : null;
 

@@ -66,7 +66,7 @@ function isActivePath(pathname: string, href: string): boolean {
 }
 
 export function MobileNav() {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "ADMIN";
 

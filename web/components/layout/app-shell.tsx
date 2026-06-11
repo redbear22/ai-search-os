@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
   const isAuthPage = pathname === "/login" || pathname.startsWith("/auth");
 
   if (isAuthPage) {
