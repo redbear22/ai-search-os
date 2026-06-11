@@ -3,8 +3,8 @@ import type { NextAuthOptions } from "next-auth";
 import type { AgencyRole, User as DbUser, UserRole } from "@prisma/client";
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { PrismaAdapter } from "@auth/prisma-adapter";
-import { getPrisma, isDatabaseConfigured } from "@/lib/prisma";
+import { PrismaAdapter } from "@next-auth/prisma-adapter";
+import { getBasePrisma, getPrisma, isDatabaseConfigured } from "@/lib/prisma";
 import { getDevAuthEmail, isDevAuthBypassEnabled } from "@/lib/dev-auth";
 import { loadWorkspaceUserFields } from "@/lib/workspace";
 
@@ -55,7 +55,7 @@ function buildProviders() {
 }
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(getPrisma() as never),
+  adapter: PrismaAdapter(getBasePrisma()),
   providers: buildProviders(),
   // JWT sessions so middleware getToken() works (database sessions use opaque cookies)
   session: {
@@ -67,12 +67,20 @@ export const authOptions: NextAuthOptions = {
       if (!isDatabaseConfigured()) return false;
       if (!user.email) return false;
 
-      const email = user.email.trim().toLowerCase();
-      const dbUser = await getPrisma().user.findUnique({ where: { email } });
+      try {
+        const email = user.email.trim().toLowerCase();
+        const dbUser = await getBasePrisma().user.findUnique({ where: { email } });
 
-      if (!dbUser) return false;
+        if (!dbUser) {
+          console.error("[auth] signIn rejected: no pre-approved user for", email);
+          return false;
+        }
 
-      return dbUser.role === "APPROVED" || dbUser.role === "ADMIN";
+        return dbUser.role === "APPROVED" || dbUser.role === "ADMIN";
+      } catch (err) {
+        console.error("[auth] signIn callback failed", err);
+        return false;
+      }
     },
     async jwt({ token, user, trigger, session }) {
       const userId = (user as DbUser | undefined)?.id ?? (token.id as string | undefined);
@@ -125,5 +133,19 @@ export const authOptions: NextAuthOptions = {
     error: "/auth/error",
   },
   secret: process.env.NEXTAUTH_SECRET,
-  debug: process.env.NODE_ENV === "development",
+  debug: process.env.NEXTAUTH_DEBUG === "true",
+  events: {
+    async signIn(message) {
+      console.info("[auth] signIn event", message.user.email ?? message.user.id);
+    },
+    async linkAccount(message) {
+      console.info("[auth] linkAccount", message.user.email ?? message.user.id);
+    },
+    async createUser(message) {
+      console.info("[auth] createUser", message.user.email ?? message.user.id);
+    },
+    async error(message) {
+      console.error("[auth] error event", message);
+    },
+  },
 };

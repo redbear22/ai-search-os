@@ -3,7 +3,27 @@ import { generateRecordId } from "@/lib/ids";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: ReturnType<typeof createExtendedPrismaClient> | undefined;
+  basePrisma: PrismaClient | undefined;
 };
+
+function createBasePrismaClient() {
+  return new PrismaClient({
+    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
+    datasources: {
+      db: {
+        url: process.env.DATABASE_URL,
+      },
+    },
+  });
+}
+
+/** Base client for NextAuth PrismaAdapter (must not use query extensions). */
+export function getBasePrisma(): PrismaClient {
+  if (!globalForPrisma.basePrisma) {
+    globalForPrisma.basePrisma = createBasePrismaClient();
+  }
+  return globalForPrisma.basePrisma;
+}
 
 export function getDatabaseUrl(): string {
   return process.env.DATABASE_URL?.trim() ?? "";
@@ -21,11 +41,7 @@ function assignUuidId(data: unknown): void {
   }
 }
 
-function createExtendedPrismaClient() {
-  const base = new PrismaClient({
-    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
-  });
-
+function createExtendedPrismaClient(base: PrismaClient) {
   return base.$extends({
     query: {
       $allModels: {
@@ -53,7 +69,7 @@ function createExtendedPrismaClient() {
 
 export function getPrisma() {
   if (!globalForPrisma.prisma) {
-    globalForPrisma.prisma = createExtendedPrismaClient();
+    globalForPrisma.prisma = createExtendedPrismaClient(getBasePrisma());
     void import("@/lib/data-obfuscation/honeypot")
       .then((m) => m.syncBlockedIpsFromDatabase())
       .catch(() => undefined);

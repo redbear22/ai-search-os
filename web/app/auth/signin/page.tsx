@@ -18,7 +18,7 @@ const ERROR_HINTS: Record<string, string> = {
   OAuthAccountNotLinked:
     "Your email exists in the database but wasn't linked to Google yet. Try again in an incognito window.",
   Callback:
-    "Google returned successfully but session creation failed. Clear site cookies and try again.",
+    "Google sign-in succeeded but the app could not save your session. Check that DATABASE_URL points to Supabase PostgreSQL, prisma db push has been run, and your email exists as APPROVED or ADMIN in the User table.",
   CredentialsSignin: "Dev sign-in failed. Check DEV_AUTH_EMAIL in web/.env.local.",
 };
 
