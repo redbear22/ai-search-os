@@ -1,238 +1,257 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import {
-  ArrowLeft,
-  CheckCircle2,
-  Clock,
-  Loader2,
-  Play,
-  Wrench,
-} from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/components/ui/use-toast";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
-import type { FixPipelineRunView, PipelineStepState } from "@/types/automated-fix-pipeline";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  CheckCircle,
+  XCircle,
+  Clock,
+  AlertCircle,
+  Play,
+  RefreshCw,
+  GitBranch,
+  Code,
+  FileCode,
+  Shield,
+} from "lucide-react";
 
-const PIPELINE_LABELS: Record<string, string> = {
-  citation_outreach: "Citation outreach",
-  content_generation: "Content generation",
-  entity_optimization: "Entity optimization",
+type FixPipelineRunView = {
+  id: string;
+  clientId: string;
+  status: "pending" | "running" | "completed" | "failed";
+  startedAt: string;
+  completedAt: string | null;
+  fixesApplied: number;
+  fixesFailed: number;
+  trigger: string;
+  error: string | null;
 };
-
-function stepBadge(status: PipelineStepState["status"]) {
-  if (status === "completed") return <Badge variant="secondary">Done</Badge>;
-  if (status === "awaiting_approval") return <Badge>Review</Badge>;
-  if (status === "failed") return <Badge variant="destructive">Failed</Badge>;
-  if (status === "running") return <Badge variant="outline">Running</Badge>;
-  return <Badge variant="outline">Pending</Badge>;
-}
 
 type ClientGap = {
   id: string;
-  title: string;
-  layer: string;
-  severity: string;
+  description: string;
+  category: string;
+  severity: "high" | "medium" | "low";
 };
 
 export default function AutomatedFixPipelinePage() {
-  const params = useParams<{ clientId: string }>();
-  const clientId = params?.clientId ?? "";
+  const params = useParams();
+  const clientId = (params?.clientId as string) ?? "";
   const { toast } = useToast();
 
   const [runs, setRuns] = useState<FixPipelineRunView[]>([]);
-  const [gaps, setGaps] = useState<ClientGap[]>([]);
+  const [pendingGaps, setPendingGaps] = useState<ClientGap[]>([]);
   const [loading, setLoading] = useState(true);
-  const [startingGapId, setStartingGapId] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    const [runsRes, gapsRes] = await Promise.all([
-      fetch(`/api/agency/clients/${clientId}/fixes/pipeline`),
-      fetch(`/api/agency/clients/${clientId}/gaps`),
-    ]);
-
-    if (runsRes.ok) {
-      const data = (await runsRes.json()) as { runs: FixPipelineRunView[] };
-      setRuns(data.runs);
-    }
-
-    if (gapsRes.ok) {
-      const data = (await gapsRes.json()) as { gaps: ClientGap[] };
-      setGaps(data.gaps);
-    }
-
-    setLoading(false);
-  }, [clientId]);
+  const [running, setRunning] = useState(false);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    fetchData();
+    const interval = setInterval(fetchData, 10000);
+    return () => clearInterval(interval);
+  }, [clientId]);
 
-  const startPipeline = async (gapId: string) => {
-    setStartingGapId(gapId);
-    const res = await fetch(`/api/agency/clients/${clientId}/fixes/pipeline`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ gapId, autoSend: false }),
-    });
-    setStartingGapId(null);
+  const fetchData = async () => {
+    try {
+      const [runsRes, gapsRes] = await Promise.all([
+        fetch(`/api/agency/clients/${clientId}/fixes/runs`),
+        fetch(`/api/agency/clients/${clientId}/fixes/pending-gaps`),
+      ]);
 
-    if (!res.ok) {
-      const data = (await res.json()) as { error?: string };
-      toast({ title: data.error ?? "Pipeline failed", variant: "destructive" });
-      return;
+      if (runsRes.ok) {
+        const runsData = await runsRes.json();
+        setRuns(runsData);
+      }
+
+      if (gapsRes.ok) {
+        const gapsData = await gapsRes.json();
+        setPendingGaps(gapsData);
+      }
+    } catch (error) {
+      console.error("Failed to fetch data:", error);
+    } finally {
+      setLoading(false);
     }
-
-    const data = (await res.json()) as { requiresApproval: boolean; pipelineType: string };
-    toast({
-      title: data.requiresApproval ? "Pipeline awaiting approval" : "Pipeline started",
-      description: PIPELINE_LABELS[data.pipelineType],
-    });
-    void load();
   };
 
-  const approveRun = async (runId: string) => {
-    const res = await fetch(
-      `/api/agency/clients/${clientId}/fixes/pipeline/${runId}/approve`,
-      { method: "POST" }
+  const runPipeline = async () => {
+    setRunning(true);
+    try {
+      const res = await fetch(`/api/agency/clients/${clientId}/fixes/run`, {
+        method: "POST",
+      });
+
+      if (res.ok) {
+        toast({
+          title: "Fix pipeline started",
+          description: "The automated fix pipeline is now running.",
+        });
+        setTimeout(fetchData, 2000);
+      } else {
+        throw new Error("Failed to start pipeline");
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to start fix pipeline.",
+        variant: "destructive",
+      });
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "completed":
+        return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case "failed":
+        return <XCircle className="h-4 w-4 text-red-500" />;
+      case "running":
+        return <RefreshCw className="h-4 w-4 text-yellow-500 animate-spin" />;
+      default:
+        return <Clock className="h-4 w-4 text-gray-500" />;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
     );
-    if (!res.ok) {
-      toast({ title: "Approval failed", variant: "destructive" });
-      return;
-    }
-    toast({ title: "Approved — pipeline continuing" });
-    void load();
-  };
+  }
 
   return (
-    <div className="container mx-auto space-y-6 py-8">
-      <Link
-        href={`/agency/clients/${clientId}`}
-        className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="mr-2 h-4 w-4" />
-        Back to client
-      </Link>
-
-      <div>
-        <h1 className="flex items-center gap-2 text-3xl font-bold">
-          <Wrench className="h-8 w-8" />
-          Automated Fix Pipeline
-        </h1>
-        <p className="text-muted-foreground">
-          Rules-first automation with optional AI enhancement and human approval before send/publish
-        </p>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        {(
-          [
-            ["Citation outreach", "Research → Draft → Send → Track → 5-day follow-up"],
-            ["Content generation", "Brief → Draft → SEO → Review → CMS publish"],
-            ["Entity optimization", "JSON-LD → Staging → Validate → Production"],
-          ] as const
-        ).map(([title, desc]) => (
-          <Card key={title}>
-            <CardHeader>
-              <CardTitle className="text-base">{title}</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-muted-foreground">{desc}</CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Open gaps — start pipeline</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {gaps.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No open gaps in the database. Run an autonomous audit or complete a manual audit first.
-            </p>
+    <div className="container mx-auto py-8 space-y-8">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold">Automated Fix Pipeline</h1>
+          <p className="text-muted-foreground mt-2">
+            Automatically generate and apply fixes for identified gaps
+          </p>
+        </div>
+        <Button onClick={runPipeline} disabled={running}>
+          {running ? (
+            <>
+              <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+              Running...
+            </>
           ) : (
-            <div className="space-y-2">
-              {gaps.map((gap) => (
-                <div
-                  key={gap.id}
-                  className="flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div>
-                    <p className="font-medium">{gap.title}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {gap.layer} · {gap.severity}
-                    </p>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={startingGapId === gap.id}
-                    onClick={() => void startPipeline(gap.id)}
-                  >
-                    {startingGapId === gap.id ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Play className="mr-2 h-4 w-4" />
-                    )}
-                    Automate fix
-                  </Button>
-                </div>
-              ))}
-            </div>
+            <>
+              <Play className="mr-2 h-4 w-4" />
+              Run Pipeline
+            </>
           )}
-        </CardContent>
-      </Card>
+        </Button>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Pipeline runs</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          ) : runs.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No pipeline runs yet.</p>
-          ) : (
-            <div className="space-y-4">
-              {runs.map((run) => (
-                <div key={run.id} className="rounded-lg border p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-medium">
-                        {PIPELINE_LABELS[run.pipelineType] ?? run.pipelineType}
-                      </span>
-                      <Badge variant="outline">{run.status}</Badge>
-                      <span className="text-xs text-muted-foreground">
-                        <Clock className="mr-1 inline h-3 w-3" />
-                        {new Date(run.createdAt).toLocaleString()}
-                      </span>
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Pending Fixes</CardTitle>
+            <CardDescription>Gaps ready for automated fixing</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {pendingGaps.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <CheckCircle className="h-12 w-12 mx-auto mb-3 text-green-500" />
+                <p>No pending fixes</p>
+                <p className="text-sm">All identified gaps have been addressed</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {pendingGaps.map((gap) => (
+                  <div key={gap.id} className="flex items-start justify-between p-3 border rounded-lg">
+                    <div>
+                      <Badge variant={gap.severity === "high" ? "destructive" : "default"} className="mb-2">
+                        {gap.severity}
+                      </Badge>
+                      <p className="text-sm">{gap.description}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{gap.category}</p>
                     </div>
-                    {run.requiresApproval && !run.approvedAt ? (
-                      <Button size="sm" onClick={() => void approveRun(run.id)}>
-                        <CheckCircle2 className="mr-2 h-4 w-4" />
-                        Approve & continue
-                      </Button>
-                    ) : null}
                   </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {(run.steps as PipelineStepState[]).map((step) => (
-                      <div
-                        key={step.step}
-                        className="flex items-center gap-1 rounded border px-2 py-1 text-xs"
-                      >
-                        <span className="capitalize">{step.step.replace(/_/g, " ")}</span>
-                        {stepBadge(step.status)}
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Runs</CardTitle>
+            <CardDescription>Pipeline execution history</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {runs.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Clock className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p>No pipeline runs yet</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {runs.slice(0, 10).map((run) => (
+                  <div key={run.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        {getStatusIcon(run.status)}
+                        <span className="text-sm font-medium">
+                          {new Date(run.startedAt).toLocaleString()}
+                        </span>
                       </div>
-                    ))}
+                      {run.status === "completed" && (
+                        <div className="flex gap-2 mt-1">
+                          <Badge variant="outline" className="text-xs">
+                            ✓ {run.fixesApplied} applied
+                          </Badge>
+                          {run.fixesFailed > 0 && (
+                            <Badge variant="outline" className="text-xs text-red-500">
+                              ✗ {run.fixesFailed} failed
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+                      {run.error && (
+                        <p className="text-xs text-red-500 mt-1">{run.error}</p>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>How It Works</CardTitle>
+          <CardDescription>The automated fix pipeline process</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="text-center p-4 border rounded-lg">
+              <GitBranch className="h-8 w-8 mx-auto mb-2 text-blue-500" />
+              <h3 className="font-medium">1. Identify</h3>
+              <p className="text-sm text-muted-foreground">Detect gaps from audit results</p>
             </div>
-          )}
+            <div className="text-center p-4 border rounded-lg">
+              <Code className="h-8 w-8 mx-auto mb-2 text-green-500" />
+              <h3 className="font-medium">2. Generate</h3>
+              <p className="text-sm text-muted-foreground">AI generates fix code</p>
+            </div>
+            <div className="text-center p-4 border rounded-lg">
+              <Shield className="h-8 w-8 mx-auto mb-2 text-purple-500" />
+              <h3 className="font-medium">3. Apply</h3>
+              <p className="text-sm text-muted-foreground">Automatically apply fixes</p>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>

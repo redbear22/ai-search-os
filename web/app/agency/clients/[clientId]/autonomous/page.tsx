@@ -1,341 +1,294 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import {
-  ArrowLeft,
-  Bot,
-  Calendar,
-  Loader2,
-  Play,
-  Webhook,
-  Zap,
-} from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/components/ui/use-toast";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
-import { canManageClients } from "@/lib/agency-rbac";
-import type {
-  AuditFrequency,
-  AutonomousAuditConfigView,
-  AutonomousAuditRunSummary,
-} from "@/types/autonomous-audit";
+  Play,
+  Pause,
+  RefreshCw,
+  CheckCircle,
+  XCircle,
+  Clock,
+  AlertCircle,
+  TrendingUp,
+  Shield,
+  Eye,
+  FileText,
+} from "lucide-react";
 
 const TRIGGER_LABELS: Record<string, string> = {
   schedule: "Scheduled",
-  citation_spike: "Citation spike",
-  platform_release: "AI platform release",
-  domain_change: "Domain change",
+  api: "API Call",
+  manual: "Manual",
   webhook: "Webhook",
 };
 
 export default function AutonomousAuditPage() {
-  const params = useParams<{ clientId: string }>();
-  const clientId = params?.clientId ?? "";
+  const params = useParams();
+  const clientId = (params?.clientId as string) ?? "";
   const { data: session } = useSession();
   const { toast } = useToast();
-  const canManage = session?.user?.agencyRole
-    ? canManageClients(session.user.agencyRole)
-    : false;
+  const canManage = session?.user?.agencyRole === "ADMIN" || session?.user?.agencyRole === "OWNER";
 
-  const [config, setConfig] = useState<AutonomousAuditConfigView | null>(null);
-  const [runs, setRuns] = useState<AutonomousAuditRunSummary[]>([]);
+  const [isRunning, setIsRunning] = useState(false);
+  const [lastRun, setLastRun] = useState<Date | null>(null);
+  const [nextRun, setNextRun] = useState<Date | null>(null);
+  const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [running, setRunning] = useState(false);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    const res = await fetch(`/api/agency/clients/${clientId}/autonomous-audit`);
-    if (res.ok) {
-      const data = (await res.json()) as {
-        config: AutonomousAuditConfigView;
-        recentRuns: AutonomousAuditRunSummary[];
-      };
-      setConfig(data.config);
-      setRuns(data.recentRuns);
-    }
-    setLoading(false);
-  }, [clientId]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    fetchStatus();
+    fetchHistory();
+    const interval = setInterval(fetchStatus, 30000);
+    return () => clearInterval(interval);
+  }, [clientId]);
 
-  const saveConfig = async (patch: Partial<AutonomousAuditConfigView>) => {
-    if (!config) return;
-    setSaving(true);
-    const res = await fetch(`/api/agency/clients/${clientId}/autonomous-audit`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        enabled: patch.enabled ?? config.enabled,
-        auditFrequency: patch.auditFrequency ?? config.auditFrequency,
-        triggers: patch.triggers ?? config.triggers,
-        autoAssign: patch.autoAssign ?? config.autoAssign,
-        notifyClient: patch.notifyClient ?? config.notifyClient,
-      }),
-    });
-    setSaving(false);
-    if (!res.ok) {
-      toast({ title: "Failed to save", variant: "destructive" });
-      return;
+  const fetchStatus = async () => {
+    try {
+      const res = await fetch(`/api/agency/clients/${clientId}/autonomous/status`);
+      if (res.ok) {
+        const data = await res.json();
+        setIsRunning(data.isRunning);
+        setLastRun(data.lastRun ? new Date(data.lastRun) : null);
+        setNextRun(data.nextRun ? new Date(data.nextRun) : null);
+      }
+    } catch (error) {
+      console.error("Failed to fetch status:", error);
     }
-    toast({ title: "Autonomous audit settings saved" });
-    void load();
   };
 
-  const runNow = async () => {
-    setRunning(true);
-    const res = await fetch(`/api/agency/clients/${clientId}/autonomous-audit/run`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ triggerType: "webhook" }),
-    });
-    setRunning(false);
-    if (!res.ok) {
-      toast({ title: "Audit run failed", variant: "destructive" });
-      return;
+  const fetchHistory = async () => {
+    try {
+      const res = await fetch(`/api/agency/clients/${clientId}/autonomous/history`);
+      if (res.ok) {
+        const data = await res.json();
+        setHistory(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch history:", error);
+    } finally {
+      setLoading(false);
     }
-    toast({ title: "Autonomous audit completed" });
-    void load();
+  };
+
+  const toggleAutonomous = async () => {
+    try {
+      const res = await fetch(`/api/agency/clients/${clientId}/autonomous/toggle`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: !isRunning }),
+      });
+
+      if (res.ok) {
+        setIsRunning(!isRunning);
+        toast({
+          title: isRunning ? "Autonomous audits stopped" : "Autonomous audits started",
+          description: isRunning
+            ? "No further automatic audits will be triggered."
+            : "The system will now automatically audit this client.",
+        });
+        fetchStatus();
+      } else {
+        throw new Error("Failed to toggle");
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to change autonomous audit status.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const triggerNow = async () => {
+    try {
+      const res = await fetch(`/api/agency/clients/${clientId}/autonomous/trigger`, {
+        method: "POST",
+      });
+
+      if (res.ok) {
+        toast({
+          title: "Audit triggered",
+          description: "An audit has been queued and will run shortly.",
+        });
+        setTimeout(() => {
+          fetchStatus();
+          fetchHistory();
+        }, 2000);
+      } else {
+        throw new Error("Failed to trigger");
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to trigger audit.",
+        variant: "destructive",
+      });
+    }
   };
 
   if (loading) {
     return (
-      <div className="container mx-auto flex justify-center py-24">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  if (!config) {
-    return (
-      <div className="container mx-auto py-16 text-center text-muted-foreground">
-        Autonomous audit unavailable
+      <div className="flex items-center justify-center h-96">
+        <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto space-y-6 py-8">
-      <Link
-        href={`/agency/clients/${clientId}`}
-        className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="mr-2 h-4 w-4" />
-        Back to client
-      </Link>
-
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="container mx-auto py-8 space-y-8">
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="flex items-center gap-2 text-3xl font-bold">
-            <Bot className="h-8 w-8" />
-            Autonomous Audit Engine
-          </h1>
-          <p className="text-muted-foreground">
-            Rules-based scheduling, gap detection, prioritization, and team assignment
+          <h1 className="text-3xl font-bold">Autonomous Audits</h1>
+          <p className="text-muted-foreground mt-2">
+            Automated audit scheduling and execution for this client
           </p>
         </div>
-        <Button onClick={runNow} disabled={running}>
-          {running ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <Play className="mr-2 h-4 w-4" />
-          )}
-          Run now
-        </Button>
+        {canManage && (
+          <Button onClick={toggleAutonomous} variant={isRunning ? "destructive" : "default"}>
+            {isRunning ? (
+              <>
+                <Pause className="mr-2 h-4 w-4" />
+                Stop Autonomous Audits
+              </>
+            ) : (
+              <>
+                <Play className="mr-2 h-4 w-4" />
+                Start Autonomous Audits
+              </>
+            )}
+          </Button>
+        )}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-3">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Configuration</CardTitle>
+            <CardTitle>Status</CardTitle>
+            <CardDescription>Current autonomous audit status</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent>
             <div className="flex items-center gap-2">
-              <Checkbox
-                id="enabled"
-                checked={config.enabled}
-                disabled={!canManage || saving}
-                onCheckedChange={(checked) =>
-                  void saveConfig({ enabled: checked === true })
-                }
-              />
-              <Label htmlFor="enabled">Enable autonomous audits</Label>
+              {isRunning ? (
+                <>
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                  <span className="font-medium text-green-500">Active</span>
+                </>
+              ) : (
+                <>
+                  <XCircle className="h-5 w-5 text-red-500" />
+                  <span className="font-medium text-red-500">Inactive</span>
+                </>
+              )}
             </div>
-
-            <div className="space-y-2">
-              <Label>Audit frequency</Label>
-              <Select
-                value={config.optimizedFrequency ?? config.auditFrequency}
-                disabled={!canManage}
-                onValueChange={(v) =>
-                  void saveConfig({ auditFrequency: v as AuditFrequency })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="weekly">Weekly</SelectItem>
-                  <SelectItem value="biweekly">Biweekly</SelectItem>
-                  <SelectItem value="monthly">Monthly</SelectItem>
-                </SelectContent>
-              </Select>
-              {config.optimizedFrequency ? (
-                <p className="text-xs text-muted-foreground">
-                  Optimized frequency: {config.optimizedFrequency} (learned from gap velocity)
-                </p>
-              ) : null}
-            </div>
-
-            <div className="space-y-2">
-              <Label>Event triggers</Label>
-              {(
-                [
-                  ["citationSpike", "Competitor citation spike"],
-                  ["platformRelease", "New AI platform release"],
-                  ["domainChange", "Client domain changes"],
-                  ["webhook", "Agency API webhook"],
-                ] as const
-              ).map(([key, label]) => (
-                <label key={key} className="flex items-center gap-2 text-sm">
-                  <Checkbox
-                    checked={config.triggers[key]}
-                    disabled={!canManage}
-                    onCheckedChange={(checked) =>
-                      void saveConfig({
-                        triggers: { ...config.triggers, [key]: checked === true },
-                      })
-                    }
-                  />
-                  {label}
-                </label>
-              ))}
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Checkbox
-                checked={config.autoAssign}
-                disabled={!canManage}
-                onCheckedChange={(checked) =>
-                  void saveConfig({ autoAssign: checked === true })
-                }
-              />
-              <Label className="font-normal">Auto-assign gaps to team members</Label>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Checkbox
-                checked={config.notifyClient}
-                disabled={!canManage}
-                onCheckedChange={(checked) =>
-                  void saveConfig({ notifyClient: checked === true })
-                }
-              />
-              <Label className="font-normal">Notify client when portal sharing is enabled</Label>
-            </div>
-
-            {config.webhookUrl ? (
-              <div className="rounded-lg border bg-muted/40 p-3">
-                <div className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
-                  <Webhook className="h-3 w-3" />
-                  Webhook URL
-                </div>
-                <code className="block break-all text-xs">{config.webhookUrl}</code>
-              </div>
-            ) : null}
-
-            {config.nextAuditAt ? (
-              <p className="flex items-center gap-1 text-sm text-muted-foreground">
-                <Calendar className="h-4 w-4" />
-                Next scheduled: {new Date(config.nextAuditAt).toLocaleString()}
+            {lastRun && (
+              <p className="text-sm text-muted-foreground mt-4">
+                Last run: {lastRun.toLocaleString()}
               </p>
-            ) : null}
+            )}
+            {nextRun && isRunning && (
+              <p className="text-sm text-muted-foreground">
+                Next run: {nextRun.toLocaleString()}
+              </p>
+            )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Zap className="h-4 w-4" />
-              Intelligence
-            </CardTitle>
+            <CardTitle>Manual Trigger</CardTitle>
+            <CardDescription>Run an audit immediately</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            <p className="text-muted-foreground">
-              The engine learns which fix patterns succeed, predicts high-impact gaps, and
-              adjusts audit frequency per client automatically.
-            </p>
-            <ul className="list-inside list-disc space-y-1 text-muted-foreground">
-              <li>Runs full 4-platform audit via unified data client</li>
-              <li>Detects and prioritizes gaps by business impact</li>
-              <li>Assigns action plans to least-loaded team member</li>
-              <li>Records fix outcomes to improve future prioritization</li>
-            </ul>
+          <CardContent>
+            <Button onClick={triggerNow} variant="outline" className="w-full">
+              <Play className="mr-2 h-4 w-4" />
+              Trigger Audit Now
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Schedule</CardTitle>
+            <CardDescription>Automatic audit schedule</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Daily automated audit</span>
+                <Badge variant={isRunning ? "default" : "secondary"}>
+                  {isRunning ? "Enabled" : "Disabled"}
+                </Badge>
+              </div>
+              <Progress value={isRunning ? 100 : 0} className="h-2" />
+              <p className="text-xs text-muted-foreground mt-2">
+                Audits run automatically at 2 AM daily when enabled
+              </p>
+            </div>
           </CardContent>
         </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Recent runs</CardTitle>
+          <CardTitle>Audit History</CardTitle>
+          <CardDescription>Recent autonomous audit runs</CardDescription>
         </CardHeader>
         <CardContent>
-          {runs.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No autonomous runs yet.</p>
+          {history.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Clock className="h-12 w-12 mx-auto mb-3 opacity-50" />
+              <p>No audit history available</p>
+            </div>
           ) : (
-            <div className="space-y-3">
-              {runs.map((run) => (
+            <div className="space-y-4">
+              {history.map((run) => (
                 <div
                   key={run.id}
-                  className="flex flex-col gap-2 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between"
+                  className="flex items-center justify-between p-4 border rounded-lg"
                 >
                   <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="outline">
-                        {TRIGGER_LABELS[run.triggerType] ?? run.triggerType}
-                      </Badge>
-                      <Badge
-                        variant={run.status === "completed" ? "secondary" : "destructive"}
-                      >
-                        {run.status}
-                      </Badge>
+                    <div className="flex items-center gap-2">
+                      {run.status === "completed" ? (
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                      ) : run.status === "failed" ? (
+                        <XCircle className="h-4 w-4 text-red-500" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4 text-yellow-500 animate-spin" />
+                      )}
+                      <span className="font-medium">
+                        {new Date(run.startedAt).toLocaleString()}
+                      </span>
+                      <Badge variant="outline">{TRIGGER_LABELS[run.trigger] || run.trigger}</Badge>
                     </div>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {run.gapsDetected} gaps detected · {run.gapsAssigned} assigned
-                      {run.notifiedClient ? " · client notified" : ""}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(run.startedAt).toLocaleString()}
-                    </p>
+                    {run.completedAt && (
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Duration: {Math.round((new Date(run.completedAt).getTime() - new Date(run.startedAt).getTime()) / 1000)} seconds
+                      </p>
+                    )}
+                    {run.error && (
+                      <Alert variant="destructive" className="mt-2">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertTitle>Error</AlertTitle>
+                        <AlertDescription>{run.error}</AlertDescription>
+                      </Alert>
+                    )}
                   </div>
-                  {run.intelligence &&
-                  typeof run.intelligence === "object" &&
-                  "topPredictedGaps" in (run.intelligence as object) ? (
-                    <div className="text-xs text-muted-foreground">
-                      Predicted:{" "}
-                      {(
-                        (run.intelligence as { topPredictedGaps?: string[] }).topPredictedGaps ??
-                        []
-                      )
-                        .slice(0, 2)
-                        .join(", ") || "—"}
-                    </div>
-                  ) : null}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => window.open(`/agency/clients/${clientId}/audit/${run.auditId}`, "_blank")}
+                  >
+                    <FileText className="h-4 w-4" />
+                  </Button>
                 </div>
               ))}
             </div>
