@@ -38,8 +38,13 @@ export async function hasRecentFreeAudit(
 ): Promise<boolean> {
   const redis = await getRedis();
   if (redis) {
-    const cached = await redis.get(`${FREE_AUDIT_REDIS_PREFIX}${ip}`);
-    if (cached) return true;
+    try {
+      const cached = await redis.get(`${FREE_AUDIT_REDIS_PREFIX}${ip}`);
+      if (cached) return true;
+    } catch (error) {
+      console.warn("[abuse-tracking] Upstash get failed, skipping Redis check", error);
+      redisClient = null;
+    }
   }
 
   if (options?.edge) return false;

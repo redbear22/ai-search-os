@@ -117,6 +117,10 @@ export function getServiceDefinitions(): ServiceDefinition[] {
     flagVar("CITATION_ENGINE_ENABLED"),
     plainVar("CITATION_ENGINE_URL", false),
   ];
+  const upstashVars = [
+    secretVar("UPSTASH_REDIS_REST_URL"),
+    secretVar("UPSTASH_REDIS_REST_TOKEN"),
+  ];
   const keywordsEverywhereVars = [
     secretVar("KEYWORDS_EVERYWHERE_API_KEY"),
     plainVar("KEYWORDS_EVERYWHERE_API_URL", false),
@@ -252,6 +256,15 @@ export function getServiceDefinitions(): ServiceDefinition[] {
       envFile: "web/.env.local",
       vars: citationVars,
       configured: citationVars[0].set,
+      optional: true,
+    },
+    {
+      id: "upstash",
+      name: "Upstash Redis",
+      description: "Distributed rate limiting and abuse tracking (falls back to in-memory)",
+      envFile: "web/.env.local",
+      vars: upstashVars,
+      configured: upstashVars.every((v) => v.set),
       optional: true,
     },
   ];
@@ -966,6 +979,53 @@ async function testCitationEngine(): Promise<ConnectivityResult> {
   }
 }
 
+async function testUpstash(): Promise<ConnectivityResult> {
+  const url = process.env.UPSTASH_REDIS_REST_URL?.trim();
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
+  if (!url || !token) {
+    return {
+      ok: false,
+      message: "UPSTASH_REDIS_REST_URL or UPSTASH_REDIS_REST_TOKEN not set",
+      latencyMs: 0,
+      usage: { fallback: "in-memory rate limiting" },
+    };
+  }
+
+  const start = Date.now();
+  try {
+    const { Redis } = await import("@upstash/redis");
+    const redis = new Redis({ url, token });
+    const probeKey = `aiso:env-check:${Date.now()}`;
+    await redis.set(probeKey, "ok", { ex: 30 });
+    const value = await redis.get(probeKey);
+    await redis.del(probeKey);
+    const latencyMs = Date.now() - start;
+
+    if (value !== "ok") {
+      return {
+        ok: false,
+        message: "Redis probe write/read mismatch",
+        latencyMs,
+      };
+    }
+
+    return {
+      ok: true,
+      message: "Connected — Redis REST read/write OK",
+      latencyMs,
+      usage: { mode: "distributed rate limiting" },
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Connection failed";
+    return {
+      ok: false,
+      message: message.includes("WRONGPASS") ? "Invalid token (WRONGPASS)" : message,
+      latencyMs: Date.now() - start,
+      usage: { fallback: "in-memory rate limiting" },
+    };
+  }
+}
+
 export async function testServiceConnectivity(
   serviceId: EnvServiceId
 ): Promise<ConnectivityResult> {
@@ -995,6 +1055,8 @@ export async function testServiceConnectivity(
       return testAgentApi();
     case "citation":
       return testCitationEngine();
+    case "upstash":
+      return testUpstash();
     default:
       return { ok: false, message: "Unknown service", latencyMs: 0 };
   }

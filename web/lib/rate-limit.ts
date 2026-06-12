@@ -13,6 +13,8 @@ type Limiter = {
 
 let apiLimiter: Limiter | null | undefined;
 let freeAuditLimiter: Limiter | null | undefined;
+let apiUpstashDisabled = false;
+let freeAuditUpstashDisabled = false;
 
 const memoryBuckets = new Map<string, number[]>();
 
@@ -50,15 +52,32 @@ async function createLimiter(
 }
 
 async function getApiLimiter(): Promise<Limiter | null> {
+  if (apiUpstashDisabled) return null;
   if (apiLimiter !== undefined) return apiLimiter;
   apiLimiter = await createLimiter("abuse:api", 10, "60 s");
   return apiLimiter;
 }
 
 async function getFreeAuditLimiter(): Promise<Limiter | null> {
+  if (freeAuditUpstashDisabled) return null;
   if (freeAuditLimiter !== undefined) return freeAuditLimiter;
   freeAuditLimiter = await createLimiter("abuse:free-audit", 1, "24 h");
   return freeAuditLimiter;
+}
+
+async function limitWithFallback(
+  limiter: Limiter,
+  key: string,
+  disableUpstash: () => void,
+  memoryFallback: () => LimitResult
+): Promise<LimitResult> {
+  try {
+    return await limiter.limit(key);
+  } catch (error) {
+    console.warn("[rate-limit] Upstash limit failed, using memory fallback", error);
+    disableUpstash();
+    return memoryFallback();
+  }
 }
 
 function memoryLimit(
@@ -88,17 +107,41 @@ function memoryLimit(
 export async function rateLimitByIp(request: Request): Promise<LimitResult> {
   const ip = getClientIpFromRequest(request);
   const limiter = await getApiLimiter();
-  if (limiter) return limiter.limit(ip);
+  if (limiter) {
+    return limitWithFallback(
+      limiter,
+      ip,
+      () => {
+        apiUpstashDisabled = true;
+        apiLimiter = null;
+      },
+      () => memoryLimit(`api:${ip}`, 10, 60_000)
+    );
+  }
   return memoryLimit(`api:${ip}`, 10, 60_000);
 }
 
 export async function canRunFreeAudit(ip: string): Promise<LimitResult> {
   const limiter = await getFreeAuditLimiter();
-  if (limiter) return limiter.limit(`free-audit:${ip}`);
+  if (limiter) {
+    return limitWithFallback(
+      limiter,
+      `free-audit:${ip}`,
+      () => {
+        freeAuditUpstashDisabled = true;
+        freeAuditLimiter = null;
+      },
+      () => memoryLimit(`free-audit:${ip}`, 1, 24 * 60 * 60 * 1000)
+    );
+  }
   return memoryLimit(`free-audit:${ip}`, 1, 24 * 60 * 60 * 1000);
 }
 
 export function resetAbuseRateLimitForTesting(key?: string): void {
+  apiUpstashDisabled = false;
+  freeAuditUpstashDisabled = false;
+  apiLimiter = undefined;
+  freeAuditLimiter = undefined;
   if (key) {
     memoryBuckets.delete(key);
     memoryBuckets.delete(`api:${key}`);

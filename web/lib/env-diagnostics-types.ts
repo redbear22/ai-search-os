@@ -10,7 +10,8 @@ export type EnvServiceId =
   | "gsc"
   | "google_oauth"
   | "agent"
-  | "citation";
+  | "citation"
+  | "upstash";
 
 export interface EnvVarStatus {
   name: string;

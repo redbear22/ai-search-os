@@ -11,8 +11,10 @@ const WINDOW_MS = 60 * 60 * 1000;
 let upstashLimiter: {
   limit: (key: string) => Promise<{ success: boolean; reset: number }>;
 } | null = null;
+let upstashDisabled = false;
 
 async function getUpstashLimiter(): Promise<typeof upstashLimiter> {
+  if (upstashDisabled) return null;
   if (upstashLimiter !== null) return upstashLimiter;
 
   const url = process.env.UPSTASH_REDIS_REST_URL?.trim();
@@ -94,24 +96,30 @@ export async function checkIpRateLimit(
 
   const limiter = await getUpstashLimiter();
   if (limiter) {
-    const result = await limiter.limit(key);
-    if (!result.success) {
-      const retryAfter = Math.max(
-        1,
-        Math.ceil((result.reset - Date.now()) / 1000)
-      );
-      return NextResponse.json(
-        {
-          error: `Rate limit exceeded (${IP_RATE_LIMIT_PER_HOUR} requests per hour per IP)`,
-          code: "rate_limited",
-        },
-        {
-          status: 429,
-          headers: { "Retry-After": String(retryAfter) },
-        }
-      );
+    try {
+      const result = await limiter.limit(key);
+      if (!result.success) {
+        const retryAfter = Math.max(
+          1,
+          Math.ceil((result.reset - Date.now()) / 1000)
+        );
+        return NextResponse.json(
+          {
+            error: `Rate limit exceeded (${IP_RATE_LIMIT_PER_HOUR} requests per hour per IP)`,
+            code: "rate_limited",
+          },
+          {
+            status: 429,
+            headers: { "Retry-After": String(retryAfter) },
+          }
+        );
+      }
+      return null;
+    } catch (error) {
+      console.warn("[rate-limit] Upstash limit failed, using memory fallback", error);
+      upstashDisabled = true;
+      upstashLimiter = null;
     }
-    return null;
   }
 
   return checkMemoryRateLimit(key);
