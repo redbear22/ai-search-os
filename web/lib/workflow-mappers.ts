@@ -1,4 +1,5 @@
-import type { AuditData } from "@/lib/audit-types";
+import type { AuditData, AuditLayerId } from "@/lib/audit-types";
+import { EMPTY_AUDIT, EMPTY_PLATFORM_CLARITY } from "@/lib/mock-audit";
 import type { Action, ActionLayerId, ActionStatus } from "@/store/actionStore";
 import type { Gap, GapSeverity } from "@/types/gap";
 import type { ChecklistItem, ProjectFolder, ProjectTask } from "@/types/task";
@@ -194,4 +195,90 @@ export function calculateFolderProgress(tasks: ProjectTask[]): number {
     completedItems += task.checklist.filter((item) => item.completed).length;
   }
   return totalItems === 0 ? 0 : Math.round((completedItems / totalItems) * 100);
+}
+
+const AGENT_LAYERS: AuditLayerId[] = [
+  "discoverability",
+  "clarity",
+  "authority",
+  "trust",
+];
+
+function layerScore(scores: Record<string, number>, layer: AuditLayerId): number {
+  const value = scores[layer];
+  return Number.isFinite(value) ? Math.max(0, Math.min(100, Math.round(value))) : 0;
+}
+
+/** Map rules-first agent layer scores into audit store shape. */
+export function agentScoresToAuditData(scores: Record<string, number>): AuditData {
+  const discoverabilityScore = layerScore(scores, "discoverability");
+  const clarityScore = layerScore(scores, "clarity");
+  const authorityScore = layerScore(scores, "authority");
+  const trustScore = layerScore(scores, "trust");
+
+  const clarityPlatforms = { ...EMPTY_AUDIT.clarity.platforms };
+  for (const platform of Object.keys(clarityPlatforms) as Array<
+    keyof typeof clarityPlatforms
+  >) {
+    clarityPlatforms[platform] = {
+      ...EMPTY_PLATFORM_CLARITY,
+      responseText: `Agent audit clarity score: ${clarityScore}/100`,
+    };
+  }
+
+  return {
+    discoverability: {
+      ...EMPTY_AUDIT.discoverability,
+      seo: {
+        traffic: discoverabilityScore * 120,
+        keywords: discoverabilityScore * 8,
+        siteHealth: discoverabilityScore,
+      },
+      aso: {
+        aiVisibilityScore: discoverabilityScore,
+        brandMentions: Math.round(discoverabilityScore / 4),
+      },
+    },
+    clarity: {
+      platforms: clarityPlatforms,
+      comparison: { analyzedAt: new Date().toISOString(), consensusCorrect: [] },
+    },
+    authority: {
+      ...EMPTY_AUDIT.authority,
+      backlinksCount: authorityScore * 12,
+      citedPages: Math.round(authorityScore / 5),
+    },
+    trust: {
+      ...EMPTY_AUDIT.trust,
+      sentimentScore: trustScore / 100,
+      reviewCount: trustScore * 2,
+      averageRating: Math.round((trustScore / 20) * 10) / 10,
+      hedgedLanguageDetected: trustScore < 60,
+    },
+  };
+}
+
+export function agentGapToUiGap(
+  gap: { layer: string; issue: string; severity: string; fix_hint: string },
+  domain: string,
+  index: number
+): Gap {
+  const layer = AGENT_LAYERS.includes(gap.layer as AuditLayerId)
+    ? (gap.layer as AuditLayerId)
+    : "discoverability";
+  const severity = ["critical", "high", "medium", "low"].includes(gap.severity)
+    ? (gap.severity as GapSeverity)
+    : "medium";
+
+  return {
+    id: `agent-gap-${index}`,
+    layer,
+    title: `${layer.charAt(0).toUpperCase()}${layer.slice(1)} gap`,
+    description: gap.issue,
+    severity,
+    source: domain,
+    suggestedAction: gap.fix_hint,
+    suggestedOwner: "SEO",
+    suggestedTimeline: 4,
+  };
 }

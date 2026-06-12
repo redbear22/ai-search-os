@@ -28,6 +28,7 @@ model User {
   invitesSent   AgencyInvite[]   @relation("InviteSender")
   audits        Audit[]
   auditJobs     AuditJob[]
+  fixJobs       FixJob[]
   taskProjects  TaskProject[]
   domains       Domain[]
 }
@@ -208,6 +209,8 @@ model Client {
   fixPipelineRuns        FixPipelineRun[]
   taskProjects           TaskProject[]
   auditJobs              AuditJob[]
+  fixJobs                FixJob[]
+  domains                Domain[]
   createdAt              DateTime               @default(now())
   updatedAt              DateTime               @updatedAt
 }
@@ -476,6 +479,8 @@ model Domain {
   agencyId         String
   agency           Agency   @relation(fields: [agencyId], references: [id], onDelete: Cascade)
   userId           String
+  clientId         String?
+  client           Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
   url              String
   isActive         Boolean  @default(true)
   treatAsSeparate  Boolean  @default(false)
@@ -486,6 +491,7 @@ model Domain {
 
   @@unique([agencyId, url])
   @@index([agencyId, isActive])
+  @@index([clientId])
 }
 
 /// Agent API — async audit jobs (arq worker + Postgres state of record)
@@ -513,6 +519,38 @@ model AuditJob {
 enum AuditJobStatus {
   QUEUED
   RUNNING
+  DONE
+  FAILED
+}
+
+/// Agent API — async fix jobs (arq worker + Postgres state of record; HITL gate)
+model FixJob {
+  id        String        @id @default(uuid())
+  siteUrl   String        @map("site_url")
+  clientId  String?       @map("client_id")
+  client    Client?       @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  gapId     String?       @map("gap_id")
+  status    FixJobStatus  @default(QUEUED)
+  progress  Int           @default(0)
+  stage     String?
+  error     String?
+  input     Json?
+  result    Json?
+  createdBy String        @map("created_by")
+  user      User          @relation(fields: [createdBy], references: [id], onDelete: Restrict)
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  @@index([createdBy])
+  @@index([clientId])
+  @@index([status])
+  @@map("fix_jobs")
+}
+
+enum FixJobStatus {
+  QUEUED
+  RUNNING
+  NEEDS_APPROVAL
   DONE
   FAILED
 }

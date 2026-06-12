@@ -12,6 +12,7 @@ import { useShallow } from "zustand/react/shallow";
 
 import { CheckCircle2, RotateCcw, Save, Sparkles } from "lucide-react";
 
+import { AgentAuditButton } from "@/components/audit/agent-audit-button";
 import { UnifiedAuditPanel } from "@/components/audit/unified-audit-panel";
 
 import { DiscoverabilityLayer } from "@/components/audit/discoverability-layer";
@@ -28,7 +29,6 @@ import { FeatureGate } from "@/components/FeatureGate";
 
 import { PlanContextBanner } from "@/components/PlanContextBanner";
 
-import { TooltipWrapper } from "@/components/TooltipWrapper";
 
 import { Button } from "@/components/ui/button";
 
@@ -44,7 +44,6 @@ import { isAuditComplete } from "@/lib/audit-validation";
 
 import { trackAuditCompleted } from "@/lib/analytics";
 
-import { trackAuditStart } from "@/lib/google-analytics";
 
 import { detectGapsRemote } from "@/lib/client/proprietary-api";
 
@@ -80,10 +79,10 @@ export default function AuditPage() {
 
 
 
-  const [brandName, setBrandName] = useState("");
-
-  const [domain, setDomain] = useState("");
-
+  const savedBrand = useAuditStore((s) => s.auditBrandName);
+  const savedDomain = useAuditStore((s) => s.auditDomain);
+  const [brandName, setBrandName] = useState(savedBrand || "PickAdviser");
+  const [domain, setDomain] = useState(savedDomain || "pickadviser.org");
   const [competitors, setCompetitors] = useState("");
 
 
@@ -197,16 +196,6 @@ export default function AuditPage() {
     [saveProgress, saveDebounced, canCloudSave]
 
   );
-
-
-
-  const runAudit = useCallback(() => {
-
-    trackAuditStart();
-
-    console.log("Running unified audit for:", { brandName, domain, competitors });
-
-  }, [brandName, domain, competitors]);
 
 
 
@@ -490,15 +479,7 @@ export default function AuditPage() {
 
 
 
-      <TooltipWrapper content="Run a full audit across all 4 layers">
-
-        <Button onClick={runAudit} className="w-full sm:w-auto">
-
-          Run Audit
-
-        </Button>
-
-      </TooltipWrapper>
+      <AgentAuditButton brandName={brandName} domain={domain} />
 
 
 

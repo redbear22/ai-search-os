@@ -120,22 +120,35 @@ export default function TermsPage() {
             </p>
           </TermsSection>
 
-          <TermsSection id="plans" title="4. Free vs Pro vs Enterprise Plans">
-            <p>We offer the following subscription tiers (pricing subject to change with notice):</p>
+          <TermsSection id="plans" title="4. Subscription Plans">
+            <p>
+              We offer the following subscription tiers (pricing subject to change with notice). See
+              our{" "}
+              <Link href="/pricing" className="text-primary underline-offset-4 hover:underline">
+                pricing page
+              </Link>{" "}
+              for current details:
+            </p>
             <ul className="list-disc space-y-2 pl-5">
               <li>
-                <strong className="text-foreground">Free</strong> — $0/month. Manual audits, one
-                brand, local browser storage, basic gap detection.
+                <strong className="text-foreground">Starter</strong> — $49/month. Manual audits, one
+                brand / domain, browser workspace, 4-platform gap detection, and basic remediation
+                suggestions.
               </li>
               <li>
-                <strong className="text-foreground">Pro</strong> — $99/month. Automated audits, up
-                to 10 brands, team sharing (up to 5 users), cloud storage, AI-generated fixes, and
-                executive summary exports.
+                <strong className="text-foreground">Pro</strong> — $149/month. Automated audits, up to
+                5 brands / domains, team sharing (up to 5 users), cloud workspace, AI-generated
+                fixes, executive summary PDF, and 90-day action plan.
               </li>
               <li>
-                <strong className="text-foreground">Enterprise</strong> — $1,000/month. Unlimited
-                brands and team members, SSO (SAML/OIDC), audit logs, priority support, and
-                enterprise compliance features as described at purchase.
+                <strong className="text-foreground">Agency</strong> — $399/month. Up to 25 brands /
+                domains, everything in Pro, agency dashboard and client workspaces, white-label
+                branding, team roles, and scheduled client reports.
+              </li>
+              <li>
+                <strong className="text-foreground">Enterprise</strong> — Custom pricing. Everything
+                in Agency plus enterprise API access, SSO (SAML/OIDC), priority support, and custom
+                integrations as described in your order form.
               </li>
             </ul>
             <p>
@@ -165,9 +178,9 @@ export default function TermsPage() {
 
           <TermsSection id="refunds" title="6. Refund Policy">
             <p>
-              <strong className="text-foreground">Pro and Enterprise plans:</strong> You may request
-              a full refund within seven (7) days of your initial paid subscription purchase if you
-              are unsatisfied with the Service. Contact{" "}
+              <strong className="text-foreground">Paid plans (Starter, Pro, and Agency):</strong> You
+              may request a full refund within seven (7) days of your initial paid subscription
+              purchase if you are unsatisfied with the Service. Contact{" "}
               <a
                 href={`mailto:${COMPANY.supportEmail}`}
                 className="text-primary underline-offset-4 hover:underline"
@@ -178,8 +191,8 @@ export default function TermsPage() {
             </p>
             <p>
               Refunds do not apply to renewals, add-on services, or usage beyond the refund window
-              unless required by law. Free tier users are not charged and are not eligible for
-              monetary refunds.
+              unless required by law. Users who only run a free audit without a paid subscription are
+              not charged and are not eligible for monetary refunds.
             </p>
             <p>
               Nothing in this policy limits refund or cancellation rights that cannot be waived under

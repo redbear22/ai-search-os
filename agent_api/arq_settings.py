@@ -6,7 +6,7 @@ import os
 
 from arq.connections import RedisSettings
 
-from agent_api.worker import on_startup, run_audit
+from agent_api.worker import on_startup, run_audit, run_fix
 
 redis_url = os.environ.get("REDIS_URL", "").strip()
 if not redis_url:
@@ -18,7 +18,7 @@ async def on_shutdown(ctx: dict) -> None:
 
 
 class WorkerSettings:
-    functions = [run_audit]
+    functions = [run_audit, run_fix]
     redis_settings = RedisSettings.from_dsn(redis_url)
     max_tries = 3
     job_timeout = 300
