@@ -85,7 +85,7 @@ const navItems: NavItem[] = [
     icon: GitCompare,
     id: "nav-ai-comparison",
   },
-  { name: "Entity Trust", href: "/entity-trust", icon: Shield, adminOnly: true },
+  { name: "Entity Trust", href: "/entity-trust", icon: Shield, id: "nav-entity-trust" },
   {
     name: "Agentic Optimizer",
     href: "/agentic-optimizer",

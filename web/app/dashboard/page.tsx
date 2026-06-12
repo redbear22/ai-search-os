@@ -8,6 +8,8 @@ import {
   AlertTriangle,
   Calendar,
   FileText,
+  Eye,
+  Shield,
   type LucideIcon,
 } from "lucide-react";
 import { HeroSection } from "@/components/dashboard/HeroSection";
@@ -53,6 +55,20 @@ const quickActions: {
     color: "bg-purple-500",
     description: "Generate leadership report",
   },
+  {
+    title: "Zero-Click Metrics",
+    href: "/zero-click-visibility",
+    icon: Eye,
+    color: "bg-cyan-500",
+    description: "Share of voice & citation density",
+  },
+  {
+    title: "Entity Trust",
+    href: "/entity-trust",
+    icon: Shield,
+    color: "bg-indigo-500",
+    description: "Knowledge graph & E-E-A-T signals",
+  },
 ];
 
 export default function DashboardPage() {
@@ -79,7 +95,7 @@ export default function DashboardPage() {
     <div className="container mx-auto space-y-4 p-4 animate-fade-in sm:space-y-6 sm:p-6">
       <HeroSection />
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
         {actionsWithCounts.map((action) => {
           const Icon = action.icon;
           const iconColor = action.color.replace("bg-", "text-");

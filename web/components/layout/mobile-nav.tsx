@@ -54,7 +54,7 @@ const moreNavItems: MoreNavItem[] = [
   { name: "Agent Readiness", href: "/agent-readiness", icon: Cpu },
   { name: "Zero-Click", href: "/zero-click-visibility", icon: Eye },
   { name: "AI Comparison", href: "/ai-comparison", icon: GitCompare },
-  { name: "Entity Trust", href: "/entity-trust", icon: Shield, adminOnly: true },
+  { name: "Entity Trust", href: "/entity-trust", icon: Shield },
   { name: "Agentic Optimizer", href: "/agentic-optimizer", icon: Bot, adminOnly: true },
   { name: "Google I/O", href: "/google-io-readiness", icon: Gauge, adminOnly: true },
   { name: "Analytics", href: "/admin/analytics", icon: BarChart3, adminOnly: true },
