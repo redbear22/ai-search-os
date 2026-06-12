@@ -4,15 +4,19 @@ import type { Account as OAuthAccount } from "next-auth";
 import type { AgencyRole, UserRole } from "@prisma/client";
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { getBasePrisma, getPrisma, isDatabaseConfigured } from "@/lib/prisma";
+import { getBasePrisma, getPrisma } from "@/lib/prisma";
 import { getDevAuthEmail, isDevAuthBypassEnabled } from "@/lib/dev-auth";
 import { normalizeAuthEmail } from "@/lib/email-normalize";
+import {
+  findAuthUserByEmail,
+  isAuthDatabaseConfigured,
+} from "@/lib/auth-user-lookup";
 import { loadWorkspaceUserFields } from "@/lib/workspace";
 
 export function isAuthConfigured(): boolean {
   return Boolean(
     process.env.NEXTAUTH_SECRET?.trim() &&
-      isDatabaseConfigured() &&
+      isAuthDatabaseConfigured() &&
       process.env.GOOGLE_CLIENT_ID?.trim() &&
       process.env.GOOGLE_CLIENT_SECRET?.trim()
   );
@@ -113,53 +117,39 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async signIn({ user }) {
-      if (!isDatabaseConfigured()) {
-        console.error("[auth] signIn rejected: no database URL configured");
+      if (!isAuthDatabaseConfigured()) {
+        console.error("[auth] signIn rejected: no database configured");
         return false;
       }
       if (!user.email) return false;
 
-      try {
-        const email = normalizeAuthEmail(user.email);
-        const dbUser = await getBasePrisma().user.findFirst({
-          where: { email: { equals: email, mode: "insensitive" } },
-        });
+      const email = normalizeAuthEmail(user.email);
+      const dbUser = await findAuthUserByEmail(user.email);
 
-        if (!dbUser) {
-          console.error(
-            "[auth] signIn rejected: no pre-approved user for",
-            email,
-            "(raw:",
-            user.email,
-            ")"
-          );
-          return false;
-        }
-
-        if (dbUser.role !== "APPROVED" && dbUser.role !== "ADMIN") {
-          console.error("[auth] signIn rejected: role is", dbUser.role, "for", email);
-          return false;
-        }
-
-        return true;
-      } catch (err) {
-        console.error("[auth] signIn callback failed — database unreachable?", err);
+      if (!dbUser) {
+        console.error(
+          "[auth] signIn rejected: no pre-approved user for",
+          email,
+          "(raw:",
+          user.email,
+          ")"
+        );
         return false;
       }
+
+      if (dbUser.role !== "APPROVED" && dbUser.role !== "ADMIN") {
+        console.error("[auth] signIn rejected: role is", dbUser.role, "for", email);
+        return false;
+      }
+
+      return true;
     },
     async jwt({ token, user, trigger, session }) {
       if (user?.email) {
-        try {
-          const email = normalizeAuthEmail(user.email);
-          const dbUser = await getBasePrisma().user.findFirst({
-            where: { email: { equals: email, mode: "insensitive" } },
-          });
-          if (dbUser) {
-            token.id = dbUser.id;
-            token.role = dbUser.role;
-          }
-        } catch (err) {
-          console.error("[auth] jwt callback user lookup failed", err);
+        const dbUser = await findAuthUserByEmail(user.email);
+        if (dbUser) {
+          token.id = dbUser.id;
+          token.role = dbUser.role;
         }
       }
 
@@ -218,9 +208,7 @@ export const authOptions: NextAuthOptions = {
       if (!email) return;
 
       try {
-        const dbUser = await getBasePrisma().user.findFirst({
-          where: { email: { equals: email, mode: "insensitive" } },
-        });
+        const dbUser = await findAuthUserByEmail(email);
         if (!dbUser) return;
 
         await syncOAuthAccount(dbUser.id, message.account, {
