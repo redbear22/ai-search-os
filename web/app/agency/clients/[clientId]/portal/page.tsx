@@ -29,6 +29,7 @@ export default function ClientPortalPage() {
   const { toast } = useToast();
   const [client, setClient] = useState<ClientPortal | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showKey, setShowKey] = useState(false);
 
   useEffect(() => {
@@ -36,14 +37,19 @@ export default function ClientPortalPage() {
   }, [clientId]);
 
   const fetchPortal = async () => {
+    setError(null);
     try {
       const res = await fetch(`/api/agency/clients/${clientId}/portal`);
       if (res.ok) {
         const data = await res.json();
         setClient(data);
+      } else {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        setError(data.error ?? "Failed to load portal settings");
       }
     } catch (error) {
       console.error("Failed to fetch portal:", error);
+      setError("Failed to load portal settings");
     } finally {
       setLoading(false);
     }
@@ -117,7 +123,7 @@ export default function ClientPortalPage() {
   if (!client) {
     return (
       <div className="text-center py-12">
-        <p className="text-muted-foreground">Portal not configured</p>
+        <p className="text-muted-foreground">{error ?? "Portal not configured"}</p>
       </div>
     );
   }

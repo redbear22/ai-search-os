@@ -9,6 +9,7 @@ import {
   requiresClientAssignment,
   type AgencyPermission,
 } from "@/lib/agency-rbac";
+import { hasFeature, resolveUserTierFromPlanType, type FeatureKey } from "@/lib/feature-flags";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 
@@ -250,6 +251,24 @@ export async function requireAgencyAccess(
   }
 
   return access;
+}
+
+export async function requireAgencyFeature(
+  agencyId: string,
+  feature: FeatureKey
+): Promise<NextResponse | null> {
+  const subscription = await prisma.subscription.findUnique({
+    where: { agencyId },
+    select: { plan: true },
+  });
+  const tier = resolveUserTierFromPlanType(subscription?.plan ?? "FREE");
+  if (!hasFeature(feature, tier)) {
+    return NextResponse.json(
+      { error: "Client portals require an Agency plan or higher" },
+      { status: 403 }
+    );
+  }
+  return null;
 }
 
 export async function requireAgencyMember() {

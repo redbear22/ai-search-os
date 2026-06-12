@@ -10,7 +10,7 @@ import {
 } from "@/lib/client-portal";
 import { computeShareOfVoice } from "@/lib/checkin-snapshot";
 import { computeNextReportAt } from "@/lib/white-label-report";
-import { requireAgencyAccess } from "@/lib/workspace";
+import { generateClientAccessKey, requireAgencyAccess } from "@/lib/workspace";
 import type { ReportFrequency, WhiteLabelReportData } from "@/types/white-label-report";
 
 const settingsSelect = {
@@ -180,6 +180,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     where: { clientId },
     create: {
       clientId,
+      clientAccessKey: generateClientAccessKey(),
       agencyLogo: body.agencyLogo ?? null,
       brandColor: body.brandColor ?? "#3b82f6",
       reportFooterText: body.reportFooterText ?? null,

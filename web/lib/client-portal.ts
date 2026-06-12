@@ -7,6 +7,38 @@ import {
 import type { ClientPortalAudit, ClientPortalBranding, ClientPortalSummary } from "@/types/client-portal";
 import { computeShareOfVoice } from "@/lib/checkin-snapshot";
 import { prisma } from "@/lib/prisma";
+import { generateClientAccessKey } from "@/lib/workspace";
+
+export function getPortalBaseUrl(): string {
+  const fromEnv =
+    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ||
+    process.env.VERCEL_URL?.trim();
+  if (fromEnv) {
+    return fromEnv.startsWith("http") ? fromEnv : `https://${fromEnv}`;
+  }
+  return "http://localhost:3000";
+}
+
+export function buildClientPortalUrl(accessKey: string): string {
+  return `${getPortalBaseUrl()}/portal/${encodeURIComponent(accessKey)}`;
+}
+
+export async function ensureClientPortalSettings(clientId: string) {
+  const existing = await prisma.clientSettings.findUnique({ where: { clientId } });
+  if (existing?.clientAccessKey) return existing;
+
+  const accessKey = generateClientAccessKey();
+  if (existing) {
+    return prisma.clientSettings.update({
+      where: { clientId },
+      data: { clientAccessKey: accessKey },
+    });
+  }
+
+  return prisma.clientSettings.create({
+    data: { clientId, clientAccessKey: accessKey },
+  });
+}
 
 export function parseAuditData(raw: Prisma.JsonValue): AuditData | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;

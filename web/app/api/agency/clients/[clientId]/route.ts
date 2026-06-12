@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAgencyAccess } from "@/lib/workspace";
+import { generateClientAccessKey, requireAgencyAccess } from "@/lib/workspace";
 
 const clientSelect = {
   id: true,
@@ -102,6 +102,7 @@ export async function PATCH(request: Request, context: RouteContext) {
                 create: {
                   reportFrequency: body.reportFrequency ?? "monthly",
                   shareWithClient: body.shareWithClient ?? false,
+                  clientAccessKey: generateClientAccessKey(),
                   agencyLogo: body.agencyLogo ?? null,
                   brandColor: body.brandColor ?? "#3b82f6",
                   reportFooterText: body.reportFooterText ?? null,
