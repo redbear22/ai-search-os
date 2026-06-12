@@ -10,7 +10,7 @@ async function parseJson<T>(response: Response): Promise<T> {
 }
 
 export function isWorkflowAuthError(status: number): boolean {
-  return status === 401 || status === 403 || status === 404;
+  return status === 401 || status === 403 || status === 404 || status === 429 || status === 503;
 }
 
 export async function fetchCurrentAudit(): Promise<PersistedAuditEnvelope | null> {
@@ -127,16 +127,16 @@ export async function fetchTaskFolders(): Promise<ProjectFolder[]> {
     throw new Error("Failed to load tasks");
   }
   const data = await parseJson<{ folders: ProjectFolder[] }>(res);
-  return data.folders.map((folder) => ({
+  return (data.folders ?? []).map((folder) => ({
     ...folder,
     createdAt: new Date(folder.createdAt),
     updatedAt: new Date(folder.updatedAt),
-    tasks: folder.tasks.map((task) => ({
+    tasks: (folder.tasks ?? []).map((task) => ({
       ...task,
       createdAt: new Date(task.createdAt),
       dueDate: task.dueDate ? new Date(task.dueDate) : undefined,
       completedAt: task.completedAt ? new Date(task.completedAt) : undefined,
-      checklist: task.checklist.map((item) => ({
+      checklist: (task.checklist ?? []).map((item) => ({
         ...item,
         completedAt: item.completedAt ? new Date(item.completedAt) : undefined,
       })),

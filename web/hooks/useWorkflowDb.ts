@@ -12,6 +12,7 @@ import {
   syncActionPlan,
   syncTaskFolders,
 } from "@/lib/workflow-api";
+import { normalizeAuditData } from "@/lib/workflow-mappers";
 import { useAuditStore } from "@/store/auditStore";
 import { useActionStore } from "@/store/actionStore";
 import { useTaskStore } from "@/store/taskStore";
@@ -50,8 +51,10 @@ export function useWorkflowHydration() {
     let cancelled = false;
 
     void (async () => {
+      const failures: string[] = [];
+
       try {
-        const [audit, actions, folders] = await Promise.all([
+        const [auditResult, actionsResult, foldersResult] = await Promise.allSettled([
           fetchCurrentAudit(),
           fetchActionPlan(),
           fetchTaskFolders(),
@@ -59,36 +62,65 @@ export function useWorkflowHydration() {
 
         if (cancelled) return;
 
-        if (audit) {
-          setWorkflowAuditDbId(audit.id);
-          useAuditStore.setState({
-            discoverability: audit.auditData.discoverability,
-            clarity: audit.auditData.clarity,
-            authority: audit.auditData.authority,
-            trust: audit.auditData.trust,
-            auditBrandName: audit.brandName,
-            auditDomain: audit.domain,
-            isCompleted: audit.isCompleted,
-            completedAt: audit.completedAt,
-            lastSavedAt: audit.lastSavedAt,
-            isHydrated: true,
-          });
+        if (auditResult.status === "fulfilled") {
+          const audit = auditResult.value;
+          const auditData = audit ? normalizeAuditData(audit.auditData) : null;
+          if (audit && auditData) {
+            setWorkflowAuditDbId(audit.id);
+            useAuditStore.setState({
+              discoverability: auditData.discoverability,
+              clarity: auditData.clarity,
+              authority: auditData.authority,
+              trust: auditData.trust,
+              auditBrandName: audit.brandName,
+              auditDomain: audit.domain,
+              isCompleted: audit.isCompleted,
+              completedAt: audit.completedAt,
+              lastSavedAt: audit.lastSavedAt,
+              isHydrated: true,
+            });
+          } else if (audit && !auditData) {
+            setWorkflowAuditDbId(audit.id);
+          }
+        } else {
+          failures.push("audit");
         }
 
-        if (actions.length > 0) {
-          useActionStore.setState({ actions });
+        if (actionsResult.status === "fulfilled") {
+          const actions = actionsResult.value;
+          if (actions.length > 0) {
+            useActionStore.setState({ actions });
+          }
+        } else {
+          failures.push("action plan");
         }
 
-        if (folders.length > 0) {
-          useTaskStore.setState({
-            folders,
-            currentFolderId: folders[0]?.id ?? null,
-          });
+        if (foldersResult.status === "fulfilled") {
+          const folders = foldersResult.value;
+          if (folders.length > 0) {
+            useTaskStore.setState({
+              folders,
+              currentFolderId: folders[0]?.id ?? null,
+            });
+          }
+        } else {
+          failures.push("tasks");
+        }
+
+        if (!useAuditStore.getState().isHydrated) {
+          useAuditStore.getState().setHydrated();
         }
 
         hydratedRef.current = true;
+
+        if (failures.length === 3) {
+          toast.error("Could not load saved workspace from database");
+        } else if (failures.length > 0) {
+          toast.warning("Some saved workspace data could not be loaded");
+        }
       } catch {
         if (!cancelled) {
+          useAuditStore.getState().setHydrated();
           toast.error("Could not load saved workspace from database");
         }
       } finally {

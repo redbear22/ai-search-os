@@ -78,7 +78,14 @@ async function resolveClientId(userId: string, displayName?: string | null): Pro
 
   const session = await getSession();
   if (session?.user?.activeClientId) {
-    return session.user.activeClientId;
+    const agencyId = await resolveAgencyId(userId);
+    if (agencyId) {
+      const client = await prisma.client.findFirst({
+        where: { id: session.user.activeClientId, agencyId },
+        select: { id: true },
+      });
+      if (client) return client.id;
+    }
   }
 
   const first = await prisma.client.findFirst({
@@ -135,11 +142,16 @@ export async function requireWorkflowContext(): Promise<WorkflowContext | NextRe
 
   const clientId = await resolveClientId(user.id, user.name);
 
+  const freshUser = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { clientId: true, agencyRole: true },
+  });
+
   const access: AgencyAccess = {
     userId: user.id,
     agencyId: resolvedAgencyId,
-    clientId: user.clientId,
-    agencyRole: user.agencyRole,
+    clientId: freshUser?.clientId ?? user.clientId,
+    agencyRole: freshUser?.agencyRole ?? user.agencyRole,
     role: user.role,
   };
 

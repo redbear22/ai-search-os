@@ -16,6 +16,15 @@ export type PersistedAuditEnvelope = {
   gapCount: number;
 };
 
+export function normalizeAuditData(raw: unknown): AuditData | null {
+  if (!raw || typeof raw !== "object") return null;
+  const data = raw as Partial<AuditData>;
+  if (!data.discoverability || !data.clarity || !data.authority || !data.trust) {
+    return null;
+  }
+  return data as AuditData;
+}
+
 export function auditRowToEnvelope(row: {
   id: string;
   brandName: string;

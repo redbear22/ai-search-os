@@ -294,6 +294,25 @@ export async function requireAgencyMember() {
   return { session, user, agency };
 }
 
+function isUniqueConstraintError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code: string }).code === "P2002"
+  );
+}
+
+async function linkUserToOwnedAgency(userId: string, agencyId: string) {
+  await prisma.user.updateMany({
+    where: { id: userId, agencyId: null },
+    data: {
+      agencyId,
+      agencyRole: "AGENCY_OWNER",
+    },
+  });
+}
+
 export async function getOrCreateAgencyForUser(userId: string, agencyName: string) {
   const existing = await prisma.user.findUnique({
     where: { id: userId },
@@ -303,7 +322,10 @@ export async function getOrCreateAgencyForUser(userId: string, agencyName: strin
   if (existing?.agency) return existing.agency;
 
   const owned = await prisma.agency.findFirst({ where: { ownerId: userId } });
-  if (owned) return owned;
+  if (owned) {
+    await linkUserToOwnedAgency(userId, owned.id);
+    return owned;
+  }
 
   const baseSlug = slugifyAgencyName(agencyName);
   let slug = baseSlug;
@@ -313,27 +335,38 @@ export async function getOrCreateAgencyForUser(userId: string, agencyName: strin
     suffix += 1;
   }
 
-  return prisma.$transaction(async (tx) => {
-    const agency = await tx.agency.create({
-      data: {
-        name: agencyName,
-        slug,
-        ownerId: userId,
-      },
-    });
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const agency = await tx.agency.create({
+        data: {
+          name: agencyName,
+          slug,
+          ownerId: userId,
+        },
+      });
 
-    await tx.subscription.create({
-      data: { agencyId: agency.id },
-    });
+      await tx.subscription.create({
+        data: { agencyId: agency.id },
+      });
 
-    await tx.user.update({
-      where: { id: userId },
-      data: {
-        agencyId: agency.id,
-        agencyRole: "AGENCY_OWNER",
-      },
-    });
+      await tx.user.update({
+        where: { id: userId },
+        data: {
+          agencyId: agency.id,
+          agencyRole: "AGENCY_OWNER",
+        },
+      });
 
-    return agency;
-  });
+      return agency;
+    });
+  } catch (error) {
+    if (!isUniqueConstraintError(error)) throw error;
+
+    const raced = await prisma.agency.findFirst({ where: { ownerId: userId } });
+    if (raced) {
+      await linkUserToOwnedAgency(userId, raced.id);
+      return raced;
+    }
+    throw error;
+  }
 }
