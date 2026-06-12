@@ -1,6 +1,7 @@
-import type { TrendData, TrendGap } from "@/lib/trends-mcp-client";
+import type { TrendData } from "@/lib/trends-mcp-client";
 import type { UnifiedAuditResult } from "@/lib/unified-audit-types";
 import type { AIPlatform, AuditData, CompetitorRow } from "@/lib/audit-types";
+import { filterRealCompetitors } from "@/lib/audit-gap-heuristics";
 
 export interface AuditRunContext {
   brandName: string;
@@ -66,18 +67,13 @@ function parseBacklinks(payload: unknown): { backlinks: number; referringDomains
   };
 }
 
-function gapMissingItems(gaps: TrendGap[]): string[] {
-  return gaps.map(
-    (g) => `Trending topic: ${g.topic} (${g.source}, gap +${g.gap})`
-  );
-}
-
 /** Map unified API results into audit store shape. */
 export function mapUnifiedAuditToAuditData(
   result: UnifiedAuditResult,
   ctx: AuditRunContext
 ): AuditData {
-  const { brandName, domain, competitors } = ctx;
+  const { brandName, domain } = ctx;
+  const competitors = filterRealCompetitors(ctx.competitors);
   const keywordRows = extractKeywordRows(result.discoverability.keywords?.data);
   const brandKw = keywordRows.find(
     (r) =>
@@ -96,9 +92,7 @@ export function mapUnifiedAuditToAuditData(
     brandMentions: Math.round(avgTrendScore(trends, name) / 4),
   }));
 
-  const gaps = result.contentGaps?.data ?? [];
   const clarityText = result.clarity?.data ?? "";
-  const missingFromGaps = gapMissingItems(gaps);
 
   const clarityPlatforms = {} as AuditData["clarity"]["platforms"];
   const platforms: AIPlatform[] = ["chatgpt", "perplexity", "claude", "gemini"];
@@ -107,7 +101,7 @@ export function mapUnifiedAuditToAuditData(
       responseText: platform === "chatgpt" ? clarityText : "",
       correctItems: brandName ? [brandName] : [],
       wrongItems: [],
-      missingItems: platform === "chatgpt" ? missingFromGaps : [...missingFromGaps],
+      missingItems: [],
     };
   }
 
@@ -121,7 +115,7 @@ export function mapUnifiedAuditToAuditData(
     discoverability: {
       seo: {
         traffic: totalVolume || num(brandKw && keywordVolume(brandKw), 0) * 12 || 1200,
-        keywords: keywordRows.length || competitors.length + 1,
+        keywords: keywordRows.length || Math.max(competitors.length, 1),
         siteHealth: Math.min(100, 50 + Math.round(brandTrend / 2)),
       },
       aso: {
@@ -140,7 +134,7 @@ export function mapUnifiedAuditToAuditData(
       backlinksCount: backlinks || referringDomains * 6,
       citedPages: Math.max(referringDomains, Math.round(backlinks / 8)),
       sourcesCitingUs: domain ? [`https://${domain.replace(/^https?:\/\//, "")}`] : [],
-      sourcesCitingCompetitorsOnly: competitors.map((c) => `https://${c.replace(/^https?:\/\//, "")}`),
+      sourcesCitingCompetitorsOnly: [],
     },
     trust: {
       sentimentScore: clarityText.toLowerCase().includes("uncertain") ? 0.45 : 0.72,

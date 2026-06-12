@@ -7,6 +7,7 @@ import { toastApiError } from "@/lib/api-error";
 import { TooltipWrapper } from "@/components/TooltipWrapper";
 import { Button } from "@/components/ui/button";
 import { mapUnifiedAuditToAuditData } from "@/lib/map-unified-audit";
+import { filterRealCompetitors } from "@/lib/audit-gap-heuristics";
 import type { AuditLayerId } from "@/lib/audit-types";
 import type { UnifiedAuditResult } from "@/lib/unified-audit-types";
 import { useAuditStore } from "@/store/auditStore";
@@ -76,13 +77,14 @@ export function FullAuditButton({
     });
 
     try {
+      const realCompetitors = filterRealCompetitors(competitors);
       const res = await fetch("/api/audit/unified", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           brandName: brandName.trim(),
           domain: domain.trim(),
-          competitors,
+          competitors: realCompetitors,
         }),
       });
 
@@ -104,7 +106,7 @@ export function FullAuditButton({
       const mapped = mapUnifiedAuditToAuditData(results, {
         brandName: brandName.trim(),
         domain: domain.trim(),
-        competitors,
+        competitors: realCompetitors,
       });
       applyUnifiedAudit(mapped, brandName.trim(), domain.trim());
 

@@ -45,7 +45,7 @@ function competitorsFromAudit(audit: AuditData | null, domain: string | null): s
       .filter(Boolean)
       .slice(0, 5);
   }
-  return domain ? [`competitor-of-${domain}`] : ["competitor1.com"];
+  return [];
 }
 
 async function pickAssignee(clientId: string, agencyId: string): Promise<string | null> {

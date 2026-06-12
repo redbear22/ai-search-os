@@ -1,6 +1,12 @@
 import "server-only";
 
 import type { AIPlatform, AuditData, AuditLayerId, DiscoverabilityLayer } from "@/lib/audit-types";
+import {
+  isInventedCompetitorCitationSource,
+  isMockClarityResponse,
+  isMockTrendMissingItem,
+  isPlaceholderCompetitor,
+} from "@/lib/audit-gap-heuristics";
 import { CLARITY_PLATFORMS, CLARITY_PLATFORM_LABELS } from "@/lib/clarity-comparison";
 import type { Gap, GapSeverity } from "@/types/gap";
 
@@ -57,7 +63,7 @@ function deriveKeywordGaps(discoverability: DiscoverabilityLayer): string[] {
 
   for (const competitor of competitors) {
     const name = competitor.name.trim();
-    if (!name) continue;
+    if (!name || isPlaceholderCompetitor(name)) continue;
     if (competitor.aiVisibility > brandVisibility) {
       gaps.push(`${name} alternative`);
     }
@@ -92,6 +98,7 @@ export function detectGaps(auditData: AuditData): Gap[] {
   const keywordGaps = deriveKeywordGaps(discoverability);
 
   for (const source of authority.sourcesCitingCompetitorsOnly.filter(Boolean)) {
+    if (isInventedCompetitorCitationSource(source)) continue;
     pushGap(gaps, {
       layer: "authority",
       title: `Missing citation from ${source}`,
@@ -133,8 +140,27 @@ export function detectGaps(auditData: AuditData): Gap[] {
     });
   }
 
-  for (const response of clarityResponses(auditData)) {
-    if (!response.responseText.trim()) {
+  const responses = clarityResponses(auditData);
+  const hasLiveClarityCapture = responses.some(
+    (r) => r.responseText.trim() && !isMockClarityResponse(r.responseText)
+  );
+  const emptyPlatforms = responses.filter((r) => !r.responseText.trim());
+
+  if (!hasLiveClarityCapture && emptyPlatforms.length > 0) {
+    pushGap(gaps, {
+      layer: "clarity",
+      title: "AI platform responses not captured",
+      description:
+        "No live AI clarity responses are available yet. Configure platform API keys and run clarity queries to validate how ChatGPT, Perplexity, Claude, and Google AI describe your brand.",
+      severity: "low",
+      source: "clarity",
+      suggestedAction:
+        "Open the Clarity layer, query each AI platform with your brand prompt, then mark wrong or missing items.",
+      suggestedOwner: "Brand Strategy",
+      suggestedTimeline: 1,
+    });
+  } else {
+    for (const response of emptyPlatforms) {
       pushGap(gaps, {
         layer: "clarity",
         title: `No ${response.platformLabel} response captured`,
@@ -146,8 +172,11 @@ export function detectGaps(auditData: AuditData): Gap[] {
         suggestedTimeline: 1,
       });
     }
+  }
 
-    for (const item of response.wrongItems) {
+  const missingByItem = new Map<string, string[]>();
+  for (const response of responses) {
+    for (const item of response.wrongItems.filter(Boolean)) {
       pushGap(gaps, {
         layer: "clarity",
         title: `AI misunderstanding: "${truncate(item)}"`,
@@ -160,18 +189,32 @@ export function detectGaps(auditData: AuditData): Gap[] {
       });
     }
 
-    for (const item of response.missingItems) {
-      pushGap(gaps, {
-        layer: "clarity",
-        title: `Missing brand attribute: "${truncate(item)}"`,
-        description: `${response.platformLabel} does not mention ${item} about your brand.`,
-        severity: "medium",
-        source: response.platform,
-        suggestedAction: `Create content specifically about ${item}. Ensure your website, social profiles, and press releases highlight this attribute.`,
-        suggestedOwner: "Content",
-        suggestedTimeline: 5,
-      });
+    for (const item of response.missingItems.filter(Boolean)) {
+      if (isMockTrendMissingItem(item)) continue;
+      const key = item.toLowerCase();
+      const platforms = missingByItem.get(key) ?? [];
+      if (!platforms.includes(response.platformLabel)) {
+        platforms.push(response.platformLabel);
+        missingByItem.set(key, platforms);
+      }
     }
+  }
+
+  for (const [item, platformLabels] of missingByItem) {
+    const platformText =
+      platformLabels.length === 1
+        ? platformLabels[0]
+        : `${platformLabels.slice(0, -1).join(", ")} and ${platformLabels.at(-1)}`;
+    pushGap(gaps, {
+      layer: "clarity",
+      title: `Missing brand attribute: "${truncate(item)}"`,
+      description: `${platformText} do not mention ${item} about your brand.`,
+      severity: "medium",
+      source: platformLabels.join(", "),
+      suggestedAction: `Create content specifically about ${item}. Ensure your website, social profiles, and press releases highlight this attribute.`,
+      suggestedOwner: "Content",
+      suggestedTimeline: 5,
+    });
   }
 
   const consensus = clarity.comparison?.consensusCorrect ?? [];
@@ -226,7 +269,7 @@ export function detectGaps(auditData: AuditData): Gap[] {
 
   for (const competitor of discoverability.competitors) {
     const name = competitor.name.trim();
-    if (!name) continue;
+    if (!name || isPlaceholderCompetitor(name)) continue;
     if (competitor.aiVisibility > aiVisibility && aiVisibility > 0) {
       pushGap(gaps, {
         layer: "discoverability",
@@ -239,6 +282,24 @@ export function detectGaps(auditData: AuditData): Gap[] {
         suggestedTimeline: 6,
       });
     }
+  }
+
+  const realCompetitors = discoverability.competitors.filter(
+    (c) => c.name.trim() && !isPlaceholderCompetitor(c.name)
+  );
+  if (realCompetitors.length === 0 && (aiVisibility > 0 || seo.traffic > 0)) {
+    pushGap(gaps, {
+      layer: "discoverability",
+      title: "Add competitors for benchmarking",
+      description:
+        "No real competitors are configured. Add competitor domains on the audit page to unlock visibility comparisons, keyword gaps, and citation analysis.",
+      severity: "low",
+      source: "competitors",
+      suggestedAction:
+        "Enter 2–5 competitor domains in the audit competitors field, then re-run discoverability or the full unified audit.",
+      suggestedOwner: "SEO",
+      suggestedTimeline: 1,
+    });
   }
 
   for (const kw of keywordGaps.slice(0, 5)) {

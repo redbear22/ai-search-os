@@ -18,7 +18,7 @@ export function UnifiedAuditTestButton() {
         body: JSON.stringify({
           brandName: "PickAdviser",
           domain: "pickadviser.org",
-          competitors: ["competitor1.com", "competitor2.com"],
+          competitors: [],
         }),
       });
       const results = await res.json();

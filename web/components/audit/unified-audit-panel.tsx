@@ -14,9 +14,7 @@ export function UnifiedAuditPanel() {
 
   const [brandName, setBrandName] = useState(savedBrand || "PickAdviser");
   const [domain, setDomain] = useState(savedDomain || "pickadviser.org");
-  const [competitorsText, setCompetitorsText] = useState(
-    "competitor1.com, competitor2.com"
-  );
+  const [competitorsText, setCompetitorsText] = useState("");
 
   const competitors = competitorsText
     .split(",")
@@ -64,7 +62,7 @@ export function UnifiedAuditPanel() {
               id="ua-competitors"
               value={competitorsText}
               onChange={(e) => setCompetitorsText(e.target.value)}
-              placeholder="competitor1.com, competitor2.com"
+              placeholder="e.g. wirecutter.com, cnet.com"
             />
           </div>
         </div>
