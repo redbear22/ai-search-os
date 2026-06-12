@@ -6,6 +6,7 @@ import { requireAgencyAccess } from "@/lib/workspace";
 const domainSelect = {
   id: true,
   url: true,
+  clientId: true,
   isActive: true,
   treatAsSeparate: true,
   separationReason: true,
@@ -30,7 +31,12 @@ export async function POST(request: Request) {
   const access = await requireAgencyAccess({ permission: "manage_clients" });
   if (access instanceof NextResponse) return access;
 
-  let body: { url?: string; treatAsSeparate?: boolean; separationReason?: string };
+  let body: {
+    url?: string;
+    clientId?: string | null;
+    treatAsSeparate?: boolean;
+    separationReason?: string;
+  };
   try {
     body = await request.json();
   } catch {
@@ -40,6 +46,20 @@ export async function POST(request: Request) {
   const url = body.url?.trim();
   if (!url) {
     return NextResponse.json({ error: "url is required" }, { status: 400 });
+  }
+
+  const clientId = body.clientId?.trim() || null;
+  if (clientId) {
+    const client = await prisma.client.findFirst({
+      where: { id: clientId, agencyId: access.agencyId },
+      select: { id: true },
+    });
+    if (!client) {
+      return NextResponse.json(
+        { error: "clientId must belong to this agency workspace" },
+        { status: 400 }
+      );
+    }
   }
 
   const treatAsSeparate = body.treatAsSeparate ?? false;
@@ -76,6 +96,7 @@ export async function POST(request: Request) {
     data: {
       agencyId: access.agencyId,
       userId: access.userId,
+      clientId,
       url: normalized,
       treatAsSeparate,
       separationReason: body.separationReason?.trim() || null,
