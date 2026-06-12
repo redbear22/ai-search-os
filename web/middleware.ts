@@ -121,6 +121,10 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  if (isPublicApiPath(pathname)) {
+    return NextResponse.next();
+  }
+
   if (isApiPath(pathname) && !isPublicApiPath(pathname)) {
     if (isProductionSecurityEnabled()) {
       await applyJitter();
