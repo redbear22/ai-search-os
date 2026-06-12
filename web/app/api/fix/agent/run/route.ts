@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
+import { normalizeSiteUrl } from "@/lib/agent-audit-server";
 import {
   isAgentFixConfigured,
-  normalizeSiteUrl,
   runAgentFixJob,
   type AgentFixGapInput,
 } from "@/lib/agent-fix-server";
