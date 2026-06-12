@@ -112,7 +112,10 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async signIn({ user }) {
-      if (!isDatabaseConfigured()) return false;
+      if (!isDatabaseConfigured()) {
+        console.error("[auth] signIn rejected: no database URL configured");
+        return false;
+      }
       if (!user.email) return false;
 
       try {
@@ -133,7 +136,7 @@ export const authOptions: NextAuthOptions = {
 
         return true;
       } catch (err) {
-        console.error("[auth] signIn callback failed", err);
+        console.error("[auth] signIn callback failed — database unreachable?", err);
         return false;
       }
     },
