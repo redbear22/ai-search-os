@@ -190,7 +190,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (isApiPath(pathname)) {
+  if (isApiPath(pathname) && !isPublicApiPath(pathname)) {
     return NextResponse.json(
       { error: "Unauthorized", code: "unauthorized" },
       { status: 401 }
