@@ -16,6 +16,8 @@ export const PUBLIC_API_PREFIXES = [
   "/api/client",
   "/api/analytics/track",
   "/api/audit/free",
+  "/api/user/plan",
+  "/api/user/tier",
   "/api/v1/oauth/token",
   "/api/v1/openapi.json",
 ] as const;

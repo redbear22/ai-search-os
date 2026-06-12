@@ -9,6 +9,11 @@ describe("isPublicApiPath", () => {
     expect(isPublicApiPath("/api/audit/free")).toBe(true);
   });
 
+  it("treats user plan/tier as public (returns free tier without session)", () => {
+    expect(isPublicApiPath("/api/user/plan")).toBe(true);
+    expect(isPublicApiPath("/api/user/tier")).toBe(true);
+  });
+
   it("treats nested public API prefixes as public", () => {
     expect(isPublicApiPath("/api/client/foo")).toBe(true);
   });
