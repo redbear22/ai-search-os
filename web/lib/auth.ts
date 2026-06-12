@@ -1,9 +1,9 @@
 import "@/lib/dev-tls";
 import type { NextAuthOptions } from "next-auth";
-import type { AgencyRole, User as DbUser, UserRole } from "@prisma/client";
+import type { Account as OAuthAccount } from "next-auth";
+import type { AgencyRole, UserRole } from "@prisma/client";
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { getBasePrisma, getPrisma, isDatabaseConfigured } from "@/lib/prisma";
 import { getDevAuthEmail, isDevAuthBypassEnabled } from "@/lib/dev-auth";
 import { loadWorkspaceUserFields } from "@/lib/workspace";
@@ -54,10 +54,58 @@ function buildProviders() {
   return providers;
 }
 
+async function syncOAuthAccount(
+  userId: string,
+  account: OAuthAccount | null | undefined,
+  profile: { name?: string | null; image?: string | null }
+) {
+  if (!account) return;
+
+  const prisma = getBasePrisma();
+  await prisma.account.upsert({
+    where: {
+      provider_providerAccountId: {
+        provider: account.provider,
+        providerAccountId: account.providerAccountId,
+      },
+    },
+    create: {
+      userId,
+      type: account.type,
+      provider: account.provider,
+      providerAccountId: account.providerAccountId,
+      refresh_token: account.refresh_token,
+      access_token: account.access_token,
+      expires_at: account.expires_at,
+      token_type: account.token_type,
+      scope: account.scope,
+      id_token: account.id_token,
+      session_state: account.session_state,
+    },
+    update: {
+      refresh_token: account.refresh_token,
+      access_token: account.access_token,
+      expires_at: account.expires_at,
+      token_type: account.token_type,
+      scope: account.scope,
+      id_token: account.id_token,
+      session_state: account.session_state,
+    },
+  });
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      name: profile.name ?? undefined,
+      image: profile.image ?? undefined,
+      emailVerified: new Date(),
+    },
+  });
+}
+
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(getBasePrisma()),
   providers: buildProviders(),
-  // JWT sessions so middleware getToken() works (database sessions use opaque cookies)
+  // JWT sessions — no PrismaAdapter (avoids pooler failures during OAuth callback on Vercel)
   session: {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60,
@@ -83,13 +131,20 @@ export const authOptions: NextAuthOptions = {
       }
     },
     async jwt({ token, user, trigger, session }) {
-      const userId = (user as DbUser | undefined)?.id ?? (token.id as string | undefined);
-
-      if (user) {
-        const dbUser = user as DbUser;
-        token.id = dbUser.id;
-        token.role = dbUser.role;
+      if (user?.email) {
+        try {
+          const email = user.email.trim().toLowerCase();
+          const dbUser = await getBasePrisma().user.findUnique({ where: { email } });
+          if (dbUser) {
+            token.id = dbUser.id;
+            token.role = dbUser.role;
+          }
+        } catch (err) {
+          console.error("[auth] jwt callback user lookup failed", err);
+        }
       }
+
+      const userId = (token.id as string | undefined) ?? undefined;
 
       if (trigger === "update" && session?.activeClientId) {
         token.activeClientId = session.activeClientId as string;
@@ -97,7 +152,10 @@ export const authOptions: NextAuthOptions = {
 
       if (userId) {
         try {
-          const workspace = await loadWorkspaceUserFields(userId);
+          const workspace = await loadWorkspaceUserFields(
+            userId,
+            token.activeClientId as string | null | undefined
+          );
           if (workspace) {
             token.role = workspace.role;
             token.agencyId = workspace.agencyId;
@@ -137,15 +195,21 @@ export const authOptions: NextAuthOptions = {
   events: {
     async signIn(message) {
       console.info("[auth] signIn event", message.user.email ?? message.user.id);
-    },
-    async linkAccount(message) {
-      console.info("[auth] linkAccount", message.user.email ?? message.user.id);
-    },
-    async createUser(message) {
-      console.info("[auth] createUser", message.user.email ?? message.user.id);
-    },
-    async error(message) {
-      console.error("[auth] error event", message);
+      const email = message.user.email?.trim().toLowerCase();
+      if (!email) return;
+
+      try {
+        const dbUser = await getBasePrisma().user.findUnique({ where: { email } });
+        if (!dbUser) return;
+
+        await syncOAuthAccount(dbUser.id, message.account, {
+          name: message.user.name,
+          image: message.user.image,
+        });
+      } catch (err) {
+        // Non-fatal: JWT session is already issued; account row sync can retry next sign-in.
+        console.error("[auth] syncOAuthAccount failed", err);
+      }
     },
   },
 };

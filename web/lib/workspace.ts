@@ -101,7 +101,10 @@ export async function getActiveClientId(
   }
 }
 
-export async function loadWorkspaceUserFields(userId: string) {
+export async function loadWorkspaceUserFields(
+  userId: string,
+  existingActiveClientId?: string | null
+) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
@@ -116,8 +119,10 @@ export async function loadWorkspaceUserFields(userId: string) {
   if (!user) return null;
 
   const agencyId = user.agencyId ?? user.ownedAgencies[0]?.id ?? null;
+  // Do not call getActiveClientId()/getServerSession here — OAuth callback runs in Pages API
+  // and session/cookie lookup can hang or recurse during the first sign-in.
   const activeClientId =
-    (await getActiveClientId()) ??
+    existingActiveClientId ??
     user.clientId ??
     (agencyId
       ? (
