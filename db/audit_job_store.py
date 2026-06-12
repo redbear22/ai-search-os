@@ -89,8 +89,12 @@ def set_result(
     job_id: str,
     scores: dict[str, int],
     gaps: list[dict[str, Any]],
+    *,
+    crawl: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    payload = {"audit": scores, "gaps": gaps}
+    payload: dict[str, Any] = {"audit": scores, "gaps": gaps}
+    if crawl is not None:
+        payload["crawl"] = crawl
     now = _utc_now()
     conn.execute(
         f"""

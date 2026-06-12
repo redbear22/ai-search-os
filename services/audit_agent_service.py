@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import os
-import re
 from typing import Any
-from urllib.parse import urlparse
+
+from services.audit_crawl import crawl as crawl_site
 
 LAYERS = ("discoverability", "clarity", "authority", "trust")
-MAX_CRAWL_PAGES = 10
 
 _GAP_THRESHOLDS = {
     "discoverability": 70,
@@ -116,43 +115,102 @@ def score_layer(layer: str, pages: list[dict[str, Any]]) -> int:
     return base
 
 
-async def crawl(site_url: str) -> list[dict[str, Any]]:
-    """Read-only crawl stub — deterministic page signals without network I/O."""
-    parsed = urlparse(site_url if "://" in site_url else f"https://{site_url}")
-    host = (parsed.netloc or "example.com").lower()
-    path = parsed.path.strip("/") or "home"
-    slug = re.sub(r"[^a-z0-9]+", "-", path.lower()).strip("-") or "home"
+async def crawl(site_url: str) -> dict[str, Any]:
+    """Real HTTP crawl — returns page signals plus crawl summary metadata."""
+    return await crawl_site(site_url)
 
-    pages: list[dict[str, Any]] = []
-    for i in range(min(3, MAX_CRAWL_PAGES)):
-        suffix = slug if i == 0 else f"{slug}-{i + 1}"
-        pages.append(
-            {
-                "url": f"https://{host}/{suffix}",
-                "title": f"{host.split('.')[0].title()} — {suffix.replace('-', ' ').title()}",
-                "meta_description": f"Overview of {suffix.replace('-', ' ')} on {host}.",
-                "h1_count": 1,
-                "word_count": 420 + i * 80,
-                "heading_count": 4 + i,
-                "list_count": 2,
-                "has_faq_block": i == 0,
-                "outbound_ref_domains": 2 + i,
-                "has_author_byline": i < 2,
-                "links_to_about": i == 0,
-                "is_https": True,
-                "has_contact_signals": True,
-                "has_privacy_policy_link": i == 0,
-            }
+
+def _detect_signal_gaps(pages: list[dict[str, Any]]) -> list[dict[str, str]]:
+    gaps: list[dict[str, str]] = []
+    seen: set[str] = set()
+
+    def _add(layer: str, issue: str, severity: str, fix_hint: str) -> None:
+        key = f"{layer}:{issue}"
+        if key in seen:
+            return
+        seen.add(key)
+        gaps.append(
+            {"layer": layer, "issue": issue, "severity": severity, "fix_hint": fix_hint}
         )
-    return pages
+
+    for page in pages:
+        url = page.get("url") or "page"
+        if page.get("fetch_error"):
+            _add(
+                "discoverability",
+                f"Could not fetch {url}: {page['fetch_error']}",
+                "high",
+                "Ensure the page is publicly reachable and returns HTML with HTTP 200.",
+            )
+            continue
+
+        title = (page.get("title") or "").strip()
+        if not title:
+            _add(
+                "discoverability",
+                f"Missing <title> on {url}",
+                "high",
+                "Add a unique, descriptive title tag (50–60 characters).",
+            )
+        elif len(title) < 15:
+            _add(
+                "discoverability",
+                f"Thin title ({len(title)} chars) on {url}: \"{title}\"",
+                "medium",
+                "Expand the title tag with primary topic and brand name.",
+            )
+
+        if not (page.get("meta_description") or "").strip():
+            _add(
+                "discoverability",
+                f"Missing meta description on {url}",
+                "medium",
+                "Add a meta description summarizing the page for search and AI snippets.",
+            )
+
+        if page.get("h1_count", 0) < 1:
+            _add(
+                "clarity",
+                f"No H1 heading found on {url}",
+                "medium",
+                "Add one clear H1 that states the page topic.",
+            )
+
+        if not page.get("has_json_ld"):
+            _add(
+                "clarity",
+                f"No JSON-LD structured data on {url}",
+                "medium",
+                "Add schema.org JSON-LD (Organization, FAQPage, or Article as appropriate).",
+            )
+
+        if not page.get("is_https"):
+            _add(
+                "trust",
+                f"Page served without HTTPS: {url}",
+                "high",
+                "Enable TLS and redirect HTTP to HTTPS.",
+            )
+
+        robots = (page.get("robots_meta") or "").lower()
+        if "noindex" in robots:
+            _add(
+                "discoverability",
+                f"robots meta noindex on {url}",
+                "high",
+                "Remove noindex if this page should appear in search and AI answers.",
+            )
+
+    return gaps
 
 
 def detect_gaps(
     scores: dict[str, int],
     pages: list[dict[str, Any]],
 ) -> list[dict[str, str]]:
-    gaps: list[dict[str, str]] = []
+    gaps: list[dict[str, str]] = _detect_signal_gaps(pages)
     page_count = len(pages)
+    successful = sum(1 for p in pages if not p.get("fetch_error"))
     for layer in LAYERS:
         score = int(scores.get(layer, 0))
         threshold = _GAP_THRESHOLDS[layer]
@@ -163,8 +221,8 @@ def detect_gaps(
             {
                 "layer": layer,
                 "issue": (
-                    f"{layer.title()} scored {score}/100 across {page_count} crawled pages "
-                    f"(threshold {threshold})."
+                    f"{layer.title()} scored {score}/100 across {successful or page_count} "
+                    f"crawled pages (threshold {threshold})."
                 ),
                 "severity": severity,
                 "fix_hint": _GAP_HINTS[layer],

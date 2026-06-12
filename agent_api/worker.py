@@ -49,7 +49,9 @@ async def run_audit(
         if delay:
             await asyncio.sleep(delay)
 
-        pages = await crawl(site_url)
+        crawl_result = await crawl(site_url)
+        pages = crawl_result.get("pages") or []
+        crawl_summary = crawl_result.get("summary") or {}
 
         with db_factory() as conn:
             set_audit_status(
@@ -75,7 +77,7 @@ async def run_audit(
         gaps = detect_gaps(scores, pages)
 
         with db_factory() as conn:
-            set_audit_result(conn, job_id, scores, gaps)
+            set_audit_result(conn, job_id, scores, gaps, crawl=crawl_summary)
     except Exception as exc:
         with db_factory() as conn:
             set_audit_status(
