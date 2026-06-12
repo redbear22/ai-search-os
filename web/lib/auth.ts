@@ -6,6 +6,7 @@ import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { getBasePrisma, getPrisma, isDatabaseConfigured } from "@/lib/prisma";
 import { getDevAuthEmail, isDevAuthBypassEnabled } from "@/lib/dev-auth";
+import { normalizeAuthEmail } from "@/lib/email-normalize";
 import { loadWorkspaceUserFields } from "@/lib/workspace";
 
 export function isAuthConfigured(): boolean {
@@ -119,13 +120,19 @@ export const authOptions: NextAuthOptions = {
       if (!user.email) return false;
 
       try {
-        const email = user.email.trim().toLowerCase();
+        const email = normalizeAuthEmail(user.email);
         const dbUser = await getBasePrisma().user.findFirst({
           where: { email: { equals: email, mode: "insensitive" } },
         });
 
         if (!dbUser) {
-          console.error("[auth] signIn rejected: no pre-approved user for", email);
+          console.error(
+            "[auth] signIn rejected: no pre-approved user for",
+            email,
+            "(raw:",
+            user.email,
+            ")"
+          );
           return false;
         }
 
@@ -143,7 +150,7 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user, trigger, session }) {
       if (user?.email) {
         try {
-          const email = user.email.trim().toLowerCase();
+          const email = normalizeAuthEmail(user.email);
           const dbUser = await getBasePrisma().user.findFirst({
             where: { email: { equals: email, mode: "insensitive" } },
           });
@@ -207,7 +214,7 @@ export const authOptions: NextAuthOptions = {
   events: {
     async signIn(message) {
       console.info("[auth] signIn event", message.user.email ?? message.user.id);
-      const email = message.user.email?.trim().toLowerCase();
+      const email = message.user.email ? normalizeAuthEmail(message.user.email) : "";
       if (!email) return;
 
       try {

@@ -16,6 +16,7 @@
 import { PrismaClient, type UserRole } from "@prisma/client";
 import { config } from "dotenv";
 import { resolve } from "path";
+import { normalizeAuthEmail } from "../lib/email-normalize";
 
 config({ path: resolve(process.cwd(), "web/.env.local") });
 config({ path: resolve(process.cwd(), "web/.env") });
@@ -24,7 +25,7 @@ config({ path: resolve(process.cwd(), ".env.local") });
 const prisma = new PrismaClient();
 
 async function main() {
-  const email = process.argv[2]?.trim().toLowerCase();
+  const email = normalizeAuthEmail(process.argv[2] ?? "");
   const roleArg = (process.argv[3] ?? "APPROVED").toUpperCase();
 
   if (!email) {
