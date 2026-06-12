@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Loader2, Play } from "lucide-react";
+import { buildAuditUrl } from "@/lib/audit-navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -70,7 +71,7 @@ export default function ClientAuditDetailPage() {
             </p>
           )}
           <div className="flex flex-wrap gap-2">
-            <Button onClick={() => router.push(`/audit?clientId=${clientId}`)}>
+            <Button onClick={() => router.push(buildAuditUrl({ clientId }))}>
               <Play className="mr-2 h-4 w-4" />
               Open audit workspace
             </Button>

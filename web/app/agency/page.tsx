@@ -12,6 +12,7 @@ import {
   ExternalLink,
   Network,
 } from "lucide-react";
+import { buildAuditUrl } from "@/lib/audit-navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -293,7 +294,15 @@ export default function AgencyDashboard() {
                     </Button>
                     <Button
                       size="sm"
-                      onClick={() => router.push(`/audit?clientId=${client.id}`)}
+                      onClick={() =>
+                        router.push(
+                          buildAuditUrl({
+                            clientId: client.id,
+                            domain: client.domain,
+                            brandName: client.name,
+                          })
+                        )
+                      }
                     >
                       Run Audit
                     </Button>

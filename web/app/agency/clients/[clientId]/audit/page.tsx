@@ -16,6 +16,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { buildAuditUrl } from "@/lib/audit-navigation";
 
 type ClientSummary = {
   id: string;
@@ -126,7 +127,17 @@ export default function ClientAuditPage() {
             <RefreshCw className="mr-2 h-4 w-4" />
             Refresh
           </Button>
-          <Button onClick={() => router.push(`/audit?clientId=${clientId}`)}>
+          <Button
+            onClick={() =>
+              router.push(
+                buildAuditUrl({
+                  clientId,
+                  domain: client.domain,
+                  brandName: client.name,
+                })
+              )
+            }
+          >
             <Play className="mr-2 h-4 w-4" />
             Run Audit
           </Button>
@@ -200,7 +211,18 @@ export default function ClientAuditPage() {
             <div className="py-8 text-center text-muted-foreground">
               <AlertTriangle className="mx-auto mb-3 h-10 w-10 opacity-40" />
               <p>Run an audit to populate gap detection for this client.</p>
-              <Button className="mt-4" onClick={() => router.push(`/audit?clientId=${clientId}`)}>
+              <Button
+                className="mt-4"
+                onClick={() =>
+                  router.push(
+                    buildAuditUrl({
+                      clientId,
+                      domain: client.domain,
+                      brandName: client.name,
+                    })
+                  )
+                }
+              >
                 Run Audit
               </Button>
             </div>

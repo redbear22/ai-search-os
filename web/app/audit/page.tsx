@@ -2,11 +2,11 @@
 
 
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import Link from "next/link";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { useShallow } from "zustand/react/shallow";
 
@@ -59,17 +59,24 @@ import { useUser } from "@/hooks/useUser";
 
 import { hasFeature } from "@/lib/feature-flags";
 
+import { parseAuditSearchParams } from "@/lib/audit-navigation";
+
 import { useAuditStore } from "@/store/auditStore";
 
 import { kpisToLegacySummary, useKPIStore } from "@/store/kpiStore";
 
 import { useActionStore } from "@/store/actionStore";
 
+import { useWorkspaceStore } from "@/store/workspaceStore";
+
 
 
 export default function AuditPage() {
 
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const switchClient = useWorkspaceStore((s) => s.switchClient);
+  const appliedPrefillRef = useRef<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<AuditLayerId>("discoverability");
 
@@ -150,6 +157,47 @@ export default function AuditPage() {
     return unsub;
 
   }, []);
+
+
+
+  useEffect(() => {
+
+    if (!isHydrated) return;
+
+    const prefill = parseAuditSearchParams(searchParams);
+    const prefillKey = searchParams?.toString() ?? "";
+    if (!prefill.clientId && !prefill.domain && !prefill.brandName) return;
+    if (appliedPrefillRef.current === prefillKey) return;
+    appliedPrefillRef.current = prefillKey;
+
+    const applyFields = (nextDomain: string | null, nextBrand: string | null) => {
+      if (nextBrand) setBrandName(nextBrand);
+      if (nextDomain) setDomain(nextDomain);
+      useAuditStore.setState({
+        auditBrandName: nextBrand ?? useAuditStore.getState().auditBrandName,
+        auditDomain: nextDomain ?? useAuditStore.getState().auditDomain,
+      });
+    };
+
+    if (prefill.domain || prefill.brandName) {
+      applyFields(prefill.domain, prefill.brandName);
+    }
+
+    if (prefill.clientId) {
+      void switchClient(prefill.clientId);
+    }
+
+    if (prefill.clientId && !prefill.domain && !prefill.brandName) {
+      void fetch(`/api/agency/clients/${prefill.clientId}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((client: { domain?: string | null; name?: string } | null) => {
+          if (!client) return;
+          applyFields(client.domain?.trim() || null, client.name?.trim() || null);
+        })
+        .catch(() => undefined);
+    }
+
+  }, [isHydrated, searchParams, switchClient]);
 
 
 
