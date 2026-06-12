@@ -122,13 +122,11 @@ export default async function AdminEnvCheckPage() {
                     >
                       <StatusIcon ok={v.set} />
                       <span className="font-mono text-xs">{v.name}</span>
-                      {!v.preview && v.value && (
-                        <span className="ml-auto truncate text-xs text-muted-foreground">
-                          {v.value}
-                        </span>
-                      )}
+                      <span className="ml-auto truncate text-xs text-muted-foreground">
+                        {v.preview ?? (v.set ? "set" : "not set")}
+                      </span>
                       {!v.required && (
-                        <Badge variant="outline" className="ml-auto text-[10px]">
+                        <Badge variant="outline" className="text-[10px]">
                           optional
                         </Badge>
                       )}

@@ -17,8 +17,8 @@ export type EnvServiceId =
 export interface EnvVarStatus {
   name: string;
   set: boolean;
+  /** Safe display string — masked for secrets, full value only for non-sensitive URLs/flags. */
   preview?: string | null;
-  value?: string | null;
   required: boolean;
 }
 

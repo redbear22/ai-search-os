@@ -1,7 +1,7 @@
 import { checkAgentApiHealth } from "@/lib/agent-api";
 import { isAuthConfigured } from "@/lib/auth";
 import { loadRootEnvFallback } from "@/lib/load-root-env";
-import { getPrisma } from "@/lib/prisma";
+import { getDatabaseUrl, getPrisma } from "@/lib/prisma";
 
 let rootEnvMerged = false;
 
@@ -25,10 +25,26 @@ export type {
   ServiceDefinition,
 } from "@/lib/env-diagnostics-types";
 
-function maskSecret(value: string | undefined): string | null {
-  if (!value) return null;
-  if (value.length <= 8) return "****";
-  return `${value.slice(0, 4)}…${value.slice(-4)}`;
+import { maskClientId, maskDatabaseUrl, maskSecret } from "@/lib/env-mask";
+
+function connectionVar(name: string, required = false): EnvVarStatus {
+  const value = process.env[name]?.trim();
+  return {
+    name,
+    set: Boolean(value),
+    preview: value ? maskDatabaseUrl(value) : null,
+    required,
+  };
+}
+
+function clientIdVar(name: string, required = true): EnvVarStatus {
+  const value = process.env[name]?.trim();
+  return {
+    name,
+    set: Boolean(value),
+    preview: value ? maskClientId(value) : null,
+    required,
+  };
 }
 
 const ENV_PLACEHOLDERS = new Set([
@@ -54,21 +70,22 @@ function secretVar(name: string, required = true): EnvVarStatus {
 }
 
 function plainVar(name: string, required = true): EnvVarStatus {
-  const value = process.env[name];
+  const value = process.env[name]?.trim();
   return {
     name,
-    set: Boolean(value?.trim()),
-    value: value ?? null,
+    set: Boolean(value),
+    preview: value ?? null,
     required,
   };
 }
 
 function flagVar(name: string): EnvVarStatus {
   const value = process.env[name];
+  const set = value === "true";
   return {
     name,
-    set: value === "true",
-    value: value ?? null,
+    set,
+    preview: set ? "true" : value ? String(value) : null,
     required: false,
   };
 }
@@ -98,7 +115,7 @@ export function getServiceDefinitions(): ServiceDefinition[] {
     plainVar("GOOGLE_GEMINI_API_URL", false),
   ];
   const dataforseoVars = [
-    plainVar("DATAFORSEO_LOGIN"),
+    secretVar("DATAFORSEO_LOGIN"),
     secretVar("DATAFORSEO_PASSWORD"),
     plainVar("DATAFORSEO_LOCATION_CODE"),
     plainVar("DATAFORSEO_LANGUAGE_CODE"),
@@ -130,17 +147,21 @@ export function getServiceDefinitions(): ServiceDefinition[] {
   const keepaVars = [secretVar("KEEPA_API_KEY")];
   const gscVars = [
     flagVar("GSC_ENABLED"),
-    plainVar("GOOGLE_GSC_CLIENT_ID", false),
+    clientIdVar("GOOGLE_GSC_CLIENT_ID", false),
     secretVar("GOOGLE_GSC_CLIENT_SECRET", false),
     secretVar("GOOGLE_GSC_REFRESH_TOKEN", false),
   ];
   const googleOAuthVars = [
     plainVar("NEXTAUTH_URL"),
     secretVar("NEXTAUTH_SECRET"),
-    plainVar("GOOGLE_CLIENT_ID"),
+    clientIdVar("GOOGLE_CLIENT_ID"),
     secretVar("GOOGLE_CLIENT_SECRET"),
   ];
-  const databaseVars = [plainVar("DATABASE_URL")];
+  const databaseVars = [
+    connectionVar("DATABASE_URL"),
+    connectionVar("POSTGRES_PRISMA_URL", false),
+    connectionVar("POSTGRES_URL", false),
+  ];
 
   const allRequiredSet = (vars: EnvVarStatus[]) =>
     vars.filter((v) => v.required).every((v) => v.set);
@@ -237,7 +258,7 @@ export function getServiceDefinitions(): ServiceDefinition[] {
       description: "PostgreSQL via Prisma (NextAuth users, app data)",
       envFile: "web/.env.local",
       vars: databaseVars,
-      configured: databaseVars[0].set,
+      configured: databaseVars.some((v) => v.set),
       optional: false,
     },
     {
@@ -255,7 +276,9 @@ export function getServiceDefinitions(): ServiceDefinition[] {
       description: "Background audit jobs (disabled by default)",
       envFile: "web/.env.local",
       vars: agentVars,
-      configured: agentVars[0].set,
+      configured:
+        agentVars[0].set &&
+        (agentVars[2].set || process.env.NODE_ENV !== "production"),
       optional: true,
     },
     {
@@ -643,12 +666,28 @@ async function testAgentApi(): Promise<ConnectivityResult> {
   const healthy = await checkAgentApiHealth();
   const latencyMs = Date.now() - start;
   const url = process.env.AGENT_API_URL || "http://localhost:8787";
+  const webKeySet = isConfiguredSecret(process.env.AGENT_API_KEY);
 
   if (!healthy) {
     return {
       ok: false,
       message: `Unreachable at ${url}/health`,
       latencyMs,
+      usage: {
+        agentApiKey: webKeySet ? "set on web" : "not set on web",
+      },
+    };
+  }
+
+  if (!webKeySet) {
+    return {
+      ok: false,
+      message: `Reachable at ${url} — AGENT_API_KEY not set on web (Next.js proxy calls will fail)`,
+      latencyMs,
+      usage: {
+        remoteHealth: "ok",
+        agentApiKey: "not set on web — add to Vercel env",
+      },
     };
   }
 
@@ -656,7 +695,7 @@ async function testAgentApi(): Promise<ConnectivityResult> {
     ok: true,
     message: `Healthy at ${url}`,
     latencyMs,
-    usage: { status: "enabled" },
+    usage: { status: "enabled", agentApiKey: "set on web" },
   };
 }
 
@@ -836,9 +875,13 @@ async function testGsc(): Promise<ConnectivityResult> {
 }
 
 async function testDatabase(): Promise<ConnectivityResult> {
-  const url = process.env.DATABASE_URL?.trim();
+  const url = getDatabaseUrl();
   if (!url) {
-    return { ok: false, message: "DATABASE_URL not set", latencyMs: 0 };
+    return {
+      ok: false,
+      message: "DATABASE_URL / POSTGRES_PRISMA_URL / POSTGRES_URL not set",
+      latencyMs: 0,
+    };
   }
 
   const start = Date.now();
