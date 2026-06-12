@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { getEnvSnapshot, isDevEnvironment } from "@/lib/env-diagnostics";
+import { requireAdminSession } from "@/lib/admin-auth";
+import { getEnvSnapshot } from "@/lib/env-diagnostics";
 
 export async function GET() {
-  if (!isDevEnvironment()) {
-    return NextResponse.json({ error: "Not available in production" }, { status: 404 });
-  }
+  const authResult = await requireAdminSession();
+  if (authResult instanceof NextResponse) return authResult;
 
   const snapshot = getEnvSnapshot();
   return NextResponse.json({

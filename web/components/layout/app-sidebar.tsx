@@ -32,13 +32,9 @@ const nav = [
 
 const adminNav = [
   { href: "/admin/users", label: "Users", icon: Users, adminOnly: true },
+  { href: "/admin/env-check", label: "Env Check", icon: Settings2, adminOnly: true },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart3, adminOnly: false },
 ];
-
-const devNav =
-  process.env.NODE_ENV === "development"
-    ? [{ href: "/admin/env-check", label: "Env Check", icon: Settings2 }]
-    : [];
 
 export function AppSidebar() {
   const pathname = usePathname();
@@ -79,42 +75,13 @@ export function AppSidebar() {
           );
         })}
 
-        {(visibleAdminNav.length > 0 || devNav.length > 0) && (
+        {visibleAdminNav.length > 0 && (
           <>
             <Separator className="my-2" />
-            {visibleAdminNav.length > 0 && (
-              <>
-                <p className="px-3 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                  Admin
-                </p>
-                {visibleAdminNav.map(({ href, label, icon: Icon }) => {
-                  const active = pathname === href;
-                  return (
-                    <Link
-                      key={href}
-                      href={href}
-                      className={cn(
-                        "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                        active
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                      )}
-                    >
-                      <Icon className="h-4 w-4" />
-                      {label}
-                    </Link>
-                  );
-                })}
-              </>
-            )}
-            {devNav.length > 0 && (
-              <>
-                <p className="mt-2 px-3 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                  Development
-                </p>
-              </>
-            )}
-            {devNav.map(({ href, label, icon: Icon }) => {
+            <p className="px-3 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              Admin
+            </p>
+            {visibleAdminNav.map(({ href, label, icon: Icon }) => {
               const active = pathname === href;
               return (
                 <Link

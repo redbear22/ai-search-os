@@ -135,12 +135,12 @@ export function getServiceDefinitions(): ServiceDefinition[] {
     secretVar("GOOGLE_GSC_REFRESH_TOKEN", false),
   ];
   const googleOAuthVars = [
-    plainVar("DATABASE_URL"),
     plainVar("NEXTAUTH_URL"),
     secretVar("NEXTAUTH_SECRET"),
     plainVar("GOOGLE_CLIENT_ID"),
     secretVar("GOOGLE_CLIENT_SECRET"),
   ];
+  const databaseVars = [plainVar("DATABASE_URL")];
 
   const allRequiredSet = (vars: EnvVarStatus[]) =>
     vars.filter((v) => v.required).every((v) => v.set);
@@ -230,6 +230,15 @@ export function getServiceDefinitions(): ServiceDefinition[] {
         gscVars[2].set &&
         gscVars[3].set,
       optional: true,
+    },
+    {
+      id: "database",
+      name: "Database",
+      description: "PostgreSQL via Prisma (NextAuth users, app data)",
+      envFile: "web/.env.local",
+      vars: databaseVars,
+      configured: databaseVars[0].set,
+      optional: false,
     },
     {
       id: "google_oauth",
@@ -826,6 +835,32 @@ async function testGsc(): Promise<ConnectivityResult> {
   }
 }
 
+async function testDatabase(): Promise<ConnectivityResult> {
+  const url = process.env.DATABASE_URL?.trim();
+  if (!url) {
+    return { ok: false, message: "DATABASE_URL not set", latencyMs: 0 };
+  }
+
+  const start = Date.now();
+  try {
+    const count = await getPrisma().user.count();
+    const latencyMs = Date.now() - start;
+
+    return {
+      ok: true,
+      message: "Connected — database query succeeded",
+      latencyMs,
+      usage: { users: count },
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      message: err instanceof Error ? err.message : "Connection failed",
+      latencyMs: Date.now() - start,
+    };
+  }
+}
+
 async function testGoogleOAuth(): Promise<ConnectivityResult> {
   if (!isAuthConfigured()) {
     return {
@@ -1057,6 +1092,8 @@ export async function testServiceConnectivity(
       return testCitationEngine();
     case "upstash":
       return testUpstash();
+    case "database":
+      return testDatabase();
     default:
       return { ok: false, message: "Unknown service", latencyMs: 0 };
   }
@@ -1085,6 +1122,7 @@ export function getEnvSnapshot() {
       keepa: services.find((s) => s.id === "keepa")?.configured ?? false,
       gsc: services.find((s) => s.id === "gsc")?.configured ?? false,
       auth: services.find((s) => s.id === "google_oauth")?.configured ?? false,
+      database: services.find((s) => s.id === "database")?.configured ?? false,
     },
   };
 }

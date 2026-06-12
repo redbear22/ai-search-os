@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdminSession } from "@/lib/admin-auth";
 import {
-  isDevEnvironment,
   testServiceConnectivity,
   type EnvServiceId,
 } from "@/lib/env-diagnostics";
@@ -18,12 +18,13 @@ const VALID_SERVICES: EnvServiceId[] = [
   "google_oauth",
   "agent",
   "citation",
+  "upstash",
+  "database",
 ];
 
 export async function POST(request: NextRequest) {
-  if (!isDevEnvironment()) {
-    return NextResponse.json({ error: "Not available in production" }, { status: 404 });
-  }
+  const authResult = await requireAdminSession();
+  if (authResult instanceof NextResponse) return authResult;
 
   try {
     const { service } = await request.json();

@@ -1,10 +1,11 @@
-import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 import { AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 import { getEnvSnapshot } from "@/lib/env-diagnostics";
 import { EnvCheckRefreshButton } from "@/components/admin/env-check-refresh-button";
 import { TestConnectionButton } from "@/components/admin/test-connection-button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { getSession } from "@/lib/session";
 
 function StatusIcon({ ok }: { ok: boolean }) {
   return ok ? (
@@ -14,9 +15,22 @@ function StatusIcon({ ok }: { ok: boolean }) {
   );
 }
 
-export default function AdminEnvCheckPage() {
-  if (process.env.NODE_ENV === "production") {
-    notFound();
+export default async function AdminEnvCheckPage() {
+  const session = await getSession();
+
+  if (!session?.user) {
+    redirect("/auth/signin");
+  }
+
+  if (session.user.role !== "ADMIN") {
+    return (
+      <div className="mx-auto max-w-4xl space-y-2 p-8">
+        <h1 className="text-2xl font-semibold tracking-tight">Forbidden</h1>
+        <p className="text-sm text-muted-foreground">
+          You need admin access to view environment diagnostics.
+        </p>
+      </div>
+    );
   }
 
   const snapshot = getEnvSnapshot();
@@ -32,8 +46,7 @@ export default function AdminEnvCheckPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Environment diagnostics</h1>
           <p className="text-sm text-muted-foreground">
-            Development-only page — verify API keys and test connectivity. Not available in production
-            builds.
+            Admin only — verify API keys are set and test connectivity. Secret values are never shown.
           </p>
           <p className="mt-2 text-sm text-muted-foreground">
             Source: <code className="text-xs">{snapshot.source}</code> · NODE_ENV:{" "}
@@ -109,9 +122,6 @@ export default function AdminEnvCheckPage() {
                     >
                       <StatusIcon ok={v.set} />
                       <span className="font-mono text-xs">{v.name}</span>
-                      {v.preview && (
-                        <span className="ml-auto text-xs text-muted-foreground">{v.preview}</span>
-                      )}
                       {!v.preview && v.value && (
                         <span className="ml-auto truncate text-xs text-muted-foreground">
                           {v.value}

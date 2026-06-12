@@ -11,7 +11,8 @@ export type EnvServiceId =
   | "google_oauth"
   | "agent"
   | "citation"
-  | "upstash";
+  | "upstash"
+  | "database";
 
 export interface EnvVarStatus {
   name: string;
