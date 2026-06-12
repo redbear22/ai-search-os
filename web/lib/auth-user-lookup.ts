@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { UserRole } from "@prisma/client";
 import { normalizeAuthEmail } from "@/lib/email-normalize";
@@ -91,14 +92,16 @@ export async function upsertAuthUser(
         .single();
       if (!error && data) return data as AuthUserRecord;
     } else {
+      const now = new Date().toISOString();
       const { data, error } = await supabase
         .from("User")
         .insert({
+          id: randomUUID(),
           email,
           role,
           agencyRole: "AGENCY_TEAM",
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+          createdAt: now,
+          updatedAt: now,
         })
         .select("id, email, role")
         .single();
