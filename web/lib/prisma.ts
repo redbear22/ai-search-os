@@ -24,12 +24,38 @@ export function getBasePrisma(): PrismaClient {
 
 /** Resolve DB URL — Vercel Supabase integration sets POSTGRES_PRISMA_URL, not DATABASE_URL. */
 export function getDatabaseUrl(): string {
-  return (
+  const raw =
     process.env.DATABASE_URL?.trim() ||
     process.env.POSTGRES_PRISMA_URL?.trim() ||
     process.env.POSTGRES_URL?.trim() ||
-    ""
-  );
+    "";
+  return normalizeDatabaseUrlForRuntime(raw);
+}
+
+/** Supabase session pooler (5432) fails on Vercel serverless — use transaction pooler (6543). */
+export function normalizeDatabaseUrlForRuntime(url: string): string {
+  if (!url) return "";
+
+  try {
+    const parsed = new URL(url);
+    const isSupabasePooler = parsed.hostname.includes("pooler.supabase.com");
+    const onVercel = process.env.VERCEL === "1";
+
+    if (!isSupabasePooler || !onVercel) return url;
+
+    if (parsed.port === "5432" || parsed.port === "") {
+      parsed.port = "6543";
+    }
+
+    parsed.searchParams.set("pgbouncer", "true");
+    if (!parsed.searchParams.has("connection_limit")) {
+      parsed.searchParams.set("connection_limit", "1");
+    }
+
+    return parsed.toString();
+  } catch {
+    return url;
+  }
 }
 
 export function isDatabaseConfigured(): boolean {

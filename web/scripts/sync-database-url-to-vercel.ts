@@ -1,11 +1,20 @@
 import { config } from "dotenv";
 import { spawnSync } from "child_process";
 import { resolve } from "path";
+import { normalizeDatabaseUrlForRuntime } from "../lib/prisma";
 
 config({ path: resolve(process.cwd(), ".env.local") });
 config({ path: resolve(process.cwd(), ".env") });
 
-const databaseUrl = process.env.DATABASE_URL?.trim();
+const rawUrl = process.env.DATABASE_URL?.trim();
+const databaseUrl = rawUrl
+  ? normalizeDatabaseUrlForRuntime(
+      (() => {
+        process.env.VERCEL = "1";
+        return rawUrl;
+      })()
+    )
+  : undefined;
 if (!databaseUrl) {
   console.error("DATABASE_URL missing in web/.env.local");
   process.exit(1);
