@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { geolocation, ipAddress } from "@vercel/functions";
 import { getToken } from "next-auth/jwt";
-import { hasRecentFreeAudit } from "@/lib/abuse-tracking";
+import { hasRecentFreeAudit } from "@/lib/abuse-tracking-edge";
 import { logApiAccessStructured } from "@/lib/api-protection/access-log-edge";
 import { validateApiAuthAtEdge } from "@/lib/api-protection/auth-edge";
 import {
@@ -76,7 +76,7 @@ export async function middleware(request: NextRequest) {
     return new NextResponse("Access from your region is not available", { status: 403 });
   }
 
-  if (pathname === "/free-audit" && (await hasRecentFreeAudit(vercelIp, { edge: true }))) {
+  if (pathname === "/free-audit" && (await hasRecentFreeAudit(vercelIp))) {
     return NextResponse.redirect(new URL("/pricing?message=free-audit-used", request.url));
   }
 

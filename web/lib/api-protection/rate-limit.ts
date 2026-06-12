@@ -1,3 +1,5 @@
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis/cloudflare";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { IP_RATE_LIMIT_PER_HOUR, isCriticalApiPath } from "@/lib/api-protection/config";
@@ -13,7 +15,7 @@ let upstashLimiter: {
 } | null = null;
 let upstashDisabled = false;
 
-async function getUpstashLimiter(): Promise<typeof upstashLimiter> {
+function getUpstashLimiter(): typeof upstashLimiter {
   if (upstashDisabled) return null;
   if (upstashLimiter !== null) return upstashLimiter;
 
@@ -25,8 +27,6 @@ async function getUpstashLimiter(): Promise<typeof upstashLimiter> {
   }
 
   try {
-    const { Ratelimit } = await import("@upstash/ratelimit");
-    const { Redis } = await import("@upstash/redis");
     const redis = new Redis({ url, token });
     upstashLimiter = new Ratelimit({
       redis,
@@ -94,7 +94,7 @@ export async function checkIpRateLimit(
   const ip = getClientIp(request);
   const key = `ip:${ip}`;
 
-  const limiter = await getUpstashLimiter();
+  const limiter = getUpstashLimiter();
   if (limiter) {
     try {
       const result = await limiter.limit(key);

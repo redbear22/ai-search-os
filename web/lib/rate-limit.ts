@@ -1,3 +1,5 @@
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis/cloudflare";
 import type { NextRequest } from "next/server";
 
 type LimitResult = {
@@ -26,18 +28,16 @@ function getClientIpFromRequest(request: Request | NextRequest): string {
   return request.headers.get("x-real-ip")?.trim() || "127.0.0.1";
 }
 
-async function createLimiter(
+function createLimiter(
   prefix: string,
   requests: number,
   window: `${number} s` | `${number} h`
-): Promise<Limiter | null> {
+): Limiter | null {
   const url = process.env.UPSTASH_REDIS_REST_URL?.trim();
   const token = process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
   if (!url || !token) return null;
 
   try {
-    const { Ratelimit } = await import("@upstash/ratelimit");
-    const { Redis } = await import("@upstash/redis");
     const redis = new Redis({ url, token });
     return new Ratelimit({
       redis,
@@ -51,17 +51,17 @@ async function createLimiter(
   }
 }
 
-async function getApiLimiter(): Promise<Limiter | null> {
+function getApiLimiter(): Limiter | null {
   if (apiUpstashDisabled) return null;
   if (apiLimiter !== undefined) return apiLimiter;
-  apiLimiter = await createLimiter("abuse:api", 10, "60 s");
+  apiLimiter = createLimiter("abuse:api", 10, "60 s");
   return apiLimiter;
 }
 
-async function getFreeAuditLimiter(): Promise<Limiter | null> {
+function getFreeAuditLimiter(): Limiter | null {
   if (freeAuditUpstashDisabled) return null;
   if (freeAuditLimiter !== undefined) return freeAuditLimiter;
-  freeAuditLimiter = await createLimiter("abuse:free-audit", 1, "24 h");
+  freeAuditLimiter = createLimiter("abuse:free-audit", 1, "24 h");
   return freeAuditLimiter;
 }
 
@@ -106,7 +106,7 @@ function memoryLimit(
 
 export async function rateLimitByIp(request: Request): Promise<LimitResult> {
   const ip = getClientIpFromRequest(request);
-  const limiter = await getApiLimiter();
+  const limiter = getApiLimiter();
   if (limiter) {
     return limitWithFallback(
       limiter,
@@ -122,7 +122,7 @@ export async function rateLimitByIp(request: Request): Promise<LimitResult> {
 }
 
 export async function canRunFreeAudit(ip: string): Promise<LimitResult> {
-  const limiter = await getFreeAuditLimiter();
+  const limiter = getFreeAuditLimiter();
   if (limiter) {
     return limitWithFallback(
       limiter,
