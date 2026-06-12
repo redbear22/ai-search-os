@@ -11,6 +11,7 @@ describe("hasFeature", () => {
   it("allows core features on free tier", () => {
     expect(hasFeature("runAudit", "free")).toBe(true);
     expect(hasFeature("viewGaps", "free")).toBe(true);
+    expect(hasFeature("localStorageSave", "free")).toBe(true);
   });
 
   it("denies starter-only features on free tier", () => {

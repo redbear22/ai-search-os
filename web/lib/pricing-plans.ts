@@ -36,7 +36,7 @@ export const PRICING_PLANS: PricingPlan[] = [
       "Browser workspace",
       "Basic remediation suggestions",
     ],
-    cta: "Start free trial",
+    cta: "Start $1 trial",
     href: "/auth/signin",
     highlighted: false,
   },
@@ -55,7 +55,7 @@ export const PRICING_PLANS: PricingPlan[] = [
       "Executive summary PDF",
       "90-day action plan",
     ],
-    cta: "Start free trial",
+    cta: "Start $1 trial",
     href: "/auth/signin",
     highlighted: true,
   },
@@ -73,7 +73,7 @@ export const PRICING_PLANS: PricingPlan[] = [
       "Team roles (Owner, Admin, Team)",
       "Scheduled client reports",
     ],
-    cta: "Start free trial",
+    cta: "Start $1 trial",
     href: "/auth/signin",
     highlighted: false,
   },
@@ -99,3 +99,6 @@ export const PRICING_PLANS: PricingPlan[] = [
 
 export const DOMAIN_SLOT_FOOTNOTE =
   "Domain slots group subdomains under the same root domain (e.g. blog.example.com and shop.example.com share one slot). Mark a property as a separate brand when adding it if it should count on its own.";
+
+export const PRICING_TRIAL_FOOTNOTE =
+  "Start with a $1, 14-day trial on paid plans. Cancel anytime.";

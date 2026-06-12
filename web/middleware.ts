@@ -1,6 +1,8 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { geolocation, ipAddress } from "@vercel/functions";
 import { getToken } from "next-auth/jwt";
+import { hasRecentFreeAudit } from "@/lib/abuse-tracking";
 import { logApiAccessStructured } from "@/lib/api-protection/access-log-edge";
 import { validateApiAuthAtEdge } from "@/lib/api-protection/auth-edge";
 import {
@@ -18,6 +20,9 @@ import {
 import { isProductionSecurityEnabled } from "@/lib/api-protection/dev";
 import { scanRequestForCanaryLeak } from "@/lib/data-obfuscation/canary-tracker";
 import { getClientIp } from "@/lib/api-protection/rate-limit";
+import { rateLimitByIp } from "@/lib/rate-limit";
+
+const BLOCKED_COUNTRIES = ["KP", "IR", "SY", "CU"] as const;
 
 function isDocumentNavigation(request: NextRequest): boolean {
   const dest = request.headers.get("sec-fetch-dest");
@@ -33,6 +38,7 @@ function isPublicPath(pathname: string): boolean {
     pathname === "/privacy" ||
     pathname === "/contact" ||
     pathname === "/pricing" ||
+    pathname === "/free-audit" ||
     pathname === "/sample-audit" ||
     pathname.startsWith("/portal/") ||
     pathname.startsWith("/api/client/") ||
@@ -63,6 +69,26 @@ export async function middleware(request: NextRequest) {
   }
 
   const ip = getClientIp(request);
+  const vercelIp = ipAddress(request) ?? ip;
+  const { country } = geolocation(request);
+
+  if (country && BLOCKED_COUNTRIES.includes(country as (typeof BLOCKED_COUNTRIES)[number])) {
+    return new NextResponse("Access from your region is not available", { status: 403 });
+  }
+
+  if (pathname === "/free-audit" && (await hasRecentFreeAudit(vercelIp, { edge: true }))) {
+    return NextResponse.redirect(new URL("/pricing?message=free-audit-used", request.url));
+  }
+
+  if (pathname === "/api/audit/free") {
+    const { success } = await rateLimitByIp(request);
+    if (!success) {
+      return NextResponse.json(
+        { error: "Too many requests. Try again later.", code: "rate_limited" },
+        { status: 429 }
+      );
+    }
+  }
 
   if (isProductionSecurityEnabled()) {
     scanRequestForCanaryLeak(request);

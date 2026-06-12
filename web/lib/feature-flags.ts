@@ -15,6 +15,7 @@ export const FEATURES = {
   // Core (all tiers)
   runAudit: { free: true, starter: true, pro: true, agency: true, enterprise: true },
   viewGaps: { free: true, starter: true, pro: true, agency: true, enterprise: true },
+  localStorageSave: { free: true, starter: true, pro: true, agency: true, enterprise: true },
 
   // Starter unlocks
   cloudSave: { free: false, starter: true, pro: true, agency: true, enterprise: true },
@@ -75,6 +76,7 @@ export function getMinTierForFeature(feature: FeatureKey): TierKey | null {
 }
 
 export const FEATURE_LABELS: Partial<Record<keyof typeof FEATURES, string>> = {
+  localStorageSave: "browser save",
   cloudSave: "cloud sync",
   aiFixGeneration: "AI-generated fixes",
   whiteLabel: "white-label reports",

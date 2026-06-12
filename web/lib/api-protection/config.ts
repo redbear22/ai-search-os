@@ -15,12 +15,16 @@ export const PUBLIC_API_PREFIXES = [
   "/api/auth",
   "/api/client",
   "/api/analytics/track",
+  "/api/audit/free",
   "/api/v1/oauth/token",
   "/api/v1/openapi.json",
 ] as const;
 
 /** Public routes that still get IP rate limiting (abuse-prone). */
-export const RATE_LIMITED_PUBLIC_PREFIXES = ["/api/analytics/track"] as const;
+export const RATE_LIMITED_PUBLIC_PREFIXES = [
+  "/api/analytics/track",
+  "/api/audit/free",
+] as const;
 
 export const CRON_API_PREFIXES = [
   "/api/agency/reports/cron",

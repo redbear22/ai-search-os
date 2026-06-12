@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Check, Menu, X } from "lucide-react";
 import { UserMenu } from "@/components/UserMenu";
-import { DOMAIN_SLOT_FOOTNOTE, PRICING_PLANS } from "@/lib/pricing-plans";
+import { DOMAIN_SLOT_FOOTNOTE, PRICING_PLANS, PRICING_TRIAL_FOOTNOTE } from "@/lib/pricing-plans";
 
 export default function PricingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -32,7 +32,7 @@ export default function PricingPage() {
                 Comparison
               </Link>
               <Link
-                href="/audit"
+                href="/free-audit"
                 className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
               >
                 Run Free Audit
@@ -64,7 +64,7 @@ export default function PricingPage() {
                 Comparison
               </Link>
               <Link
-                href="/audit"
+                href="/free-audit"
                 className="block rounded-lg bg-blue-600 py-2 text-center text-white"
               >
                 Run Free Audit
@@ -132,9 +132,12 @@ export default function PricingPage() {
           </div>
 
           <div className="mx-auto mt-10 max-w-3xl space-y-3 text-center">
+            <p className="text-sm text-gray-500">{PRICING_TRIAL_FOOTNOTE}</p>
             <p className="text-sm text-gray-500">
-              All paid plans include a 14-day free trial. No credit card required to run your first
-              audit.
+              <Link href="/free-audit" className="font-medium text-blue-600 hover:underline">
+                Run a free audit
+              </Link>{" "}
+              — no account required (one per IP every 24 hours).
             </p>
             <p className="text-sm text-gray-500">{DOMAIN_SLOT_FOOTNOTE}</p>
           </div>
