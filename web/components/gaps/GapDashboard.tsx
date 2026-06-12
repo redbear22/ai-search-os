@@ -38,6 +38,7 @@ import {
   updateGap,
 } from "@/lib/workflow-api";
 import { getWorkflowAuditDbId } from "@/hooks/useWorkflowDb";
+import { useAgentFix } from "@/hooks/useAgentFix";
 import { useSession } from "next-auth/react";
 import { getGapSummary, type Gap, type GapSeverity } from "@/types/gap";
 import { resolveDueWeek, truncateActionDescription } from "@/lib/gap-action";
@@ -128,16 +129,21 @@ function hasAuditStarted(auditData: AuditData): boolean {
 function GapCard({
   gap,
   onGenerateAction,
+  onAgentFix,
+  showAgentFix,
   isGenerating,
+  isAgentRunning,
   activeGapId,
 }: {
   gap: Gap;
   onGenerateAction: (gap: Gap) => void;
+  onAgentFix?: (gap: Gap) => void;
+  showAgentFix?: boolean;
   isGenerating: boolean;
+  isAgentRunning: boolean;
   activeGapId: string | null;
 }) {
   const { isResolved } = useGapStore();
-  const loading = isGenerating && activeGapId === gap.id;
   const borderClass =
     gap.severity === "critical"
       ? "border-l-red-500"
@@ -175,25 +181,50 @@ function GapCard({
             <span className="font-medium">Timeline:</span> Week {gap.suggestedTimeline}
           </div>
         </div>
-        <ProgressiveFeatureGate
-          feature="aiFixGeneration"
-          customUpgradeMessage="Upgrade to Pro for AI-generated gap fixes, pitches, and action plans."
-          compact
-          className="h-10 w-full shrink-0 sm:h-9 sm:w-auto"
-        >
-          <TooltipWrapper content="Generate an AI action plan, pitch, and metrics for this gap">
-            <LoadingButton
-              size="sm"
-              onClick={() => onGenerateAction(gap)}
-              loading={loading}
-              disabled={isResolved(gap.id)}
-              className="h-10 w-full shrink-0 sm:h-9 sm:w-auto"
-            >
-              {!loading && <Sparkles className="mr-2 h-4 w-4" />}
-              {loading ? "Generating..." : isResolved(gap.id) ? "Action Created" : "Generate Fix"}
-            </LoadingButton>
-          </TooltipWrapper>
-        </ProgressiveFeatureGate>
+        <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row">
+          <ProgressiveFeatureGate
+            feature="aiFixGeneration"
+            customUpgradeMessage="Upgrade to Pro for AI-generated gap fixes, pitches, and action plans."
+            compact
+            className="h-10 w-full shrink-0 sm:h-9 sm:w-auto"
+          >
+            <TooltipWrapper content="Generate an AI action plan, pitch, and metrics for this gap">
+              <LoadingButton
+                size="sm"
+                onClick={() => onGenerateAction(gap)}
+                loading={isGenerating && activeGapId === gap.id}
+                disabled={isResolved(gap.id) || isAgentRunning}
+                className="h-10 w-full shrink-0 sm:h-9 sm:w-auto"
+              >
+                {!(isGenerating && activeGapId === gap.id) && (
+                  <Sparkles className="mr-2 h-4 w-4" />
+                )}
+                {isGenerating && activeGapId === gap.id
+                  ? "Generating..."
+                  : isResolved(gap.id)
+                    ? "Action Created"
+                    : "Generate Fix"}
+              </LoadingButton>
+            </TooltipWrapper>
+          </ProgressiveFeatureGate>
+          {showAgentFix && onAgentFix && (
+            <TooltipWrapper content="Run cloud fix agent (Agent API job)">
+              <LoadingButton
+                size="sm"
+                variant="outline"
+                onClick={() => onAgentFix(gap)}
+                loading={isAgentRunning && activeGapId === gap.id}
+                disabled={isResolved(gap.id) || isGenerating}
+                className="h-10 w-full shrink-0 sm:h-9 sm:w-auto"
+              >
+                {!(isAgentRunning && activeGapId === gap.id) && (
+                  <Database className="mr-2 h-4 w-4" />
+                )}
+                {isAgentRunning && activeGapId === gap.id ? "Agent running…" : "Cloud Agent"}
+              </LoadingButton>
+            </TooltipWrapper>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -203,6 +234,7 @@ export function GapDashboard() {
   const isMobile = useMobile();
   const router = useRouter();
   const { status: authStatus } = useSession();
+  const { runAgentFix, isRunning: isAgentRunning } = useAgentFix();
   const auditData = useAuditStore(
     useShallow((s) => ({
       discoverability: s.discoverability,
@@ -211,6 +243,7 @@ export function GapDashboard() {
       trust: s.trust,
     }))
   );
+  const auditDomain = useAuditStore((s) => s.auditDomain);
   const addAction = useActionStore((s) => s.addAction);
   const markResolved = useGapStore((s) => s.markResolved);
   const isResolved = useGapStore((s) => s.isResolved);
@@ -284,8 +317,8 @@ export function GapDashboard() {
   const auditStarted = useMemo(() => hasAuditStarted(auditData), [auditData]);
 
   useEffect(() => {
-    if (!auditStarted) {
-      setGaps([]);
+    if (!auditStarted || authStatus === "loading") {
+      if (!auditStarted) setGaps([]);
       return;
     }
 
@@ -336,6 +369,26 @@ export function GapDashboard() {
       trackGapsDetected(gaps);
     }
   }, [auditStarted, gaps]);
+
+  const handleAgentFix = async (gap: Gap) => {
+    const domain = auditDomain?.trim();
+    if (!domain) {
+      toast.error("Set an audit domain before running the cloud agent");
+      return;
+    }
+
+    setSelectedGap(gap);
+    setGeneratedFix(null);
+
+    const fix = await runAgentFix(domain, gap);
+    if (fix) {
+      setGeneratedFix(fix);
+      trackFixGenerated(gap, fix.action.length);
+      if (authStatus === "authenticated") {
+        await updateGap(gap.id, { fixGenerated: fix, status: "fix_generated" });
+      }
+    }
+  };
 
   const handleGenerateFix = async (gap: Gap) => {
     setSelectedGap(gap);
@@ -575,7 +628,10 @@ export function GapDashboard() {
                   key={gap.id}
                   gap={gap}
                   onGenerateAction={handleGenerateAction}
+                  onAgentFix={handleAgentFix}
+                  showAgentFix={authStatus === "authenticated" && !!auditDomain?.trim()}
                   isGenerating={isGenerating}
+                  isAgentRunning={isAgentRunning}
                   activeGapId={selectedGap?.id ?? null}
                 />
               ))}
