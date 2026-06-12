@@ -86,8 +86,11 @@ export function FullAuditButton({
         }),
       });
 
-      const results = (await res.json()) as UnifiedAuditResult & { error?: string };
+      const results = (await res.json()) as UnifiedAuditResult & { error?: string; code?: string };
       if (!res.ok) {
+        if (res.status === 401) {
+          throw new Error("Sign in to run unified audit.");
+        }
         throw new Error(results.error || "Audit failed");
       }
 
