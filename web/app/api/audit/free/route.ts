@@ -1,5 +1,6 @@
 import { ipAddress } from "@vercel/functions";
 import { NextRequest, NextResponse } from "next/server";
+import { isAdminSession } from "@/lib/admin-auth";
 import {
   hasRecentFreeAudit,
   markFreeAuditUsed,
@@ -47,6 +48,7 @@ function buildMockAudit(url: string) {
 
 export async function POST(request: NextRequest) {
   const ip = ipAddress(request) ?? request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const isAdmin = await isAdminSession();
 
   let body: FreeAuditBody;
   try {
@@ -60,7 +62,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "A valid URL is required" }, { status: 400 });
   }
 
-  if (await hasRecentFreeAudit(ip)) {
+  if (!isAdmin && (await hasRecentFreeAudit(ip))) {
     return NextResponse.json(
       {
         error: "Free audit already used from this IP. Try again in 24 hours.",
@@ -70,7 +72,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { success } = await canRunFreeAudit(ip);
+  const { success } = await canRunFreeAudit(ip, { skip: isAdmin });
   if (!success) {
     return NextResponse.json(
       { error: "Too many requests. Try again later.", code: "rate_limited" },
@@ -80,8 +82,10 @@ export async function POST(request: NextRequest) {
 
   const auditResult = buildMockAudit(url);
 
-  await markFreeAuditUsed(ip);
-  await trackAbuseEvent(ip, "free_audit", { url });
+  if (!isAdmin) {
+    await markFreeAuditUsed(ip);
+    await trackAbuseEvent(ip, "free_audit", { url });
+  }
 
   return NextResponse.json({
     success: true,

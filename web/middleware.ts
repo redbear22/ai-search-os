@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { geolocation, ipAddress } from "@vercel/functions";
 import { getToken } from "next-auth/jwt";
+import { isAdminAtEdge } from "@/lib/admin-auth-edge";
 import { hasRecentFreeAudit } from "@/lib/abuse-tracking-edge";
 import { logApiAccessStructured } from "@/lib/api-protection/access-log-edge";
 import { validateApiAuthAtEdge } from "@/lib/api-protection/auth-edge";
@@ -76,11 +77,18 @@ export async function middleware(request: NextRequest) {
     return new NextResponse("Access from your region is not available", { status: 403 });
   }
 
-  if (pathname === "/free-audit" && (await hasRecentFreeAudit(vercelIp))) {
+  const needsAdminBypassCheck =
+    pathname === "/free-audit" ||
+    pathname === "/api/audit/free" ||
+    isRateLimitedPublicApiPath(pathname) ||
+    (isApiPath(pathname) && !isPublicApiPath(pathname));
+  const isAdmin = needsAdminBypassCheck ? await isAdminAtEdge(request) : false;
+
+  if (pathname === "/free-audit" && !isAdmin && (await hasRecentFreeAudit(vercelIp))) {
     return NextResponse.redirect(new URL("/pricing?message=free-audit-used", request.url));
   }
 
-  if (pathname === "/api/audit/free") {
+  if (pathname === "/api/audit/free" && !isAdmin) {
     const { success } = await rateLimitByIp(request);
     if (!success) {
       return NextResponse.json(
@@ -105,16 +113,30 @@ export async function middleware(request: NextRequest) {
     return handleHoneypotRequest(request);
   }
 
-  const rateLimitApi =
-    (isApiPath(pathname) && !isPublicApiPath(pathname)) ||
-    isRateLimitedPublicApiPath(pathname);
+  const needsApiAuth = isApiPath(pathname) && !isPublicApiPath(pathname);
+  const rateLimitApi = needsApiAuth || isRateLimitedPublicApiPath(pathname);
+  let apiAuthed: boolean | undefined;
 
-  if (rateLimitApi) {
-    const rateLimited = await checkIpRateLimit(request);
+  if (rateLimitApi && !isAdmin) {
+    let rateLimitAuthenticated = false;
+    if (needsApiAuth) {
+      const hasSessionCookie =
+        request.cookies.has("next-auth.session-token") ||
+        request.cookies.has("__Secure-next-auth.session-token");
+      apiAuthed =
+        !isProductionSecurityEnabled() && hasSessionCookie
+          ? true
+          : await validateApiAuthAtEdge(request);
+      rateLimitAuthenticated = apiAuthed;
+    }
+
+    const rateLimited = await checkIpRateLimit(request, {
+      authenticated: rateLimitAuthenticated,
+    });
     if (rateLimited) {
       logApiAccessStructured({
         request,
-        authType: "anonymous",
+        authType: rateLimitAuthenticated ? "session" : "anonymous",
         status: 429,
       });
       return rateLimited;
@@ -125,7 +147,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (isApiPath(pathname) && !isPublicApiPath(pathname)) {
+  if (needsApiAuth) {
     if (isProductionSecurityEnabled()) {
       await applyJitter();
     }
@@ -145,9 +167,10 @@ export async function middleware(request: NextRequest) {
       request.cookies.has("__Secure-next-auth.session-token");
 
     const authed =
-      !isProductionSecurityEnabled() && hasSessionCookie
+      apiAuthed ??
+      (!isProductionSecurityEnabled() && hasSessionCookie
         ? true
-        : await validateApiAuthAtEdge(request);
+        : await validateApiAuthAtEdge(request));
 
     if (!authed) {
       logApiAccessStructured({

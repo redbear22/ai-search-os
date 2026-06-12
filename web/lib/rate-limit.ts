@@ -104,7 +104,19 @@ function memoryLimit(
   };
 }
 
-export async function rateLimitByIp(request: Request): Promise<LimitResult> {
+const ADMIN_BYPASS: LimitResult = {
+  success: true,
+  limit: Number.MAX_SAFE_INTEGER,
+  reset: Date.now() + 60_000,
+  remaining: Number.MAX_SAFE_INTEGER,
+};
+
+export async function rateLimitByIp(
+  request: Request,
+  options?: { skip?: boolean }
+): Promise<LimitResult> {
+  if (options?.skip) return ADMIN_BYPASS;
+
   const ip = getClientIpFromRequest(request);
   const limiter = getApiLimiter();
   if (limiter) {
@@ -121,7 +133,12 @@ export async function rateLimitByIp(request: Request): Promise<LimitResult> {
   return memoryLimit(`api:${ip}`, 10, 60_000);
 }
 
-export async function canRunFreeAudit(ip: string): Promise<LimitResult> {
+export async function canRunFreeAudit(
+  ip: string,
+  options?: { skip?: boolean }
+): Promise<LimitResult> {
+  if (options?.skip) return ADMIN_BYPASS;
+
   const limiter = getFreeAuditLimiter();
   if (limiter) {
     return limitWithFallback(

@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import type { Session } from "next-auth";
 import { getSession } from "@/lib/session";
 
+export async function isAdminSession(): Promise<boolean> {
+  const session = await getSession();
+  return session?.user?.role === "ADMIN";
+}
+
 export async function requireAdminSession(): Promise<Session | NextResponse> {
   const session = await getSession();
 
