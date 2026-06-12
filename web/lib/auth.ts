@@ -117,14 +117,21 @@ export const authOptions: NextAuthOptions = {
 
       try {
         const email = user.email.trim().toLowerCase();
-        const dbUser = await getBasePrisma().user.findUnique({ where: { email } });
+        const dbUser = await getBasePrisma().user.findFirst({
+          where: { email: { equals: email, mode: "insensitive" } },
+        });
 
         if (!dbUser) {
           console.error("[auth] signIn rejected: no pre-approved user for", email);
           return false;
         }
 
-        return dbUser.role === "APPROVED" || dbUser.role === "ADMIN";
+        if (dbUser.role !== "APPROVED" && dbUser.role !== "ADMIN") {
+          console.error("[auth] signIn rejected: role is", dbUser.role, "for", email);
+          return false;
+        }
+
+        return true;
       } catch (err) {
         console.error("[auth] signIn callback failed", err);
         return false;
@@ -134,7 +141,9 @@ export const authOptions: NextAuthOptions = {
       if (user?.email) {
         try {
           const email = user.email.trim().toLowerCase();
-          const dbUser = await getBasePrisma().user.findUnique({ where: { email } });
+          const dbUser = await getBasePrisma().user.findFirst({
+            where: { email: { equals: email, mode: "insensitive" } },
+          });
           if (dbUser) {
             token.id = dbUser.id;
             token.role = dbUser.role;
@@ -199,7 +208,9 @@ export const authOptions: NextAuthOptions = {
       if (!email) return;
 
       try {
-        const dbUser = await getBasePrisma().user.findUnique({ where: { email } });
+        const dbUser = await getBasePrisma().user.findFirst({
+          where: { email: { equals: email, mode: "insensitive" } },
+        });
         if (!dbUser) return;
 
         await syncOAuthAccount(dbUser.id, message.account, {

@@ -7,13 +7,10 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function createBasePrismaClient() {
+  const url = getDatabaseUrl();
   return new PrismaClient({
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
-    datasources: {
-      db: {
-        url: process.env.DATABASE_URL,
-      },
-    },
+    datasources: url ? { db: { url } } : undefined,
   });
 }
 
@@ -25,12 +22,18 @@ export function getBasePrisma(): PrismaClient {
   return globalForPrisma.basePrisma;
 }
 
+/** Resolve DB URL — Vercel Supabase integration sets POSTGRES_PRISMA_URL, not DATABASE_URL. */
 export function getDatabaseUrl(): string {
-  return process.env.DATABASE_URL?.trim() ?? "";
+  return (
+    process.env.DATABASE_URL?.trim() ||
+    process.env.POSTGRES_PRISMA_URL?.trim() ||
+    process.env.POSTGRES_URL?.trim() ||
+    ""
+  );
 }
 
 export function isDatabaseConfigured(): boolean {
-  return Boolean(process.env.DATABASE_URL?.trim());
+  return Boolean(getDatabaseUrl());
 }
 
 function assignUuidId(data: unknown): void {
