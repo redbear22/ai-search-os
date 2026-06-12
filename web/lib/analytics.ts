@@ -6,13 +6,14 @@ import {
   trackAuditComplete as gaTrackAuditComplete,
   trackFixGenerate as gaTrackFixGenerate,
 } from "@/lib/google-analytics";
+import { getDomainGroupKey } from "@/lib/domain-normalization";
 
 function normalizeGapSource(source?: string): string {
   if (!source?.trim()) return "unknown";
 
   const trimmed = source.trim();
   if (trimmed.includes(".")) {
-    return trimmed.replace(/^https?:\/\//, "").split("/")[0] || "unknown";
+    return getDomainGroupKey(trimmed) || "unknown";
   }
 
   return trimmed.slice(0, 64);

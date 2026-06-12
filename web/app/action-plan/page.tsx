@@ -50,6 +50,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useMobile } from "@/hooks/useMobile";
+import { useActionPlanDbSync } from "@/hooks/useWorkflowDb";
 
 const LAYER_IDS: ActionLayerId[] = ["discoverability", "clarity", "authority", "trust"];
 
@@ -222,6 +223,7 @@ function ActionCard({
 
 export default function ActionPlanPage() {
   const isMobile = useMobile();
+  useActionPlanDbSync();
   const actions = useActionStore((s) => s.actions);
   const addAction = useActionStore((s) => s.addAction);
   const updateAction = useActionStore((s) => s.updateAction);

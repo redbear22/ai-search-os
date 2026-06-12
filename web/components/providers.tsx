@@ -2,6 +2,7 @@
 
 import type { Session } from "next-auth";
 import { SessionProvider } from "next-auth/react";
+import { WorkflowDbProvider } from "@/components/WorkflowDbProvider";
 
 export function Providers({
   children,
@@ -12,7 +13,7 @@ export function Providers({
 }) {
   return (
     <SessionProvider session={session} refetchOnWindowFocus={false}>
-      {children}
+      <WorkflowDbProvider>{children}</WorkflowDbProvider>
     </SessionProvider>
   );
 }

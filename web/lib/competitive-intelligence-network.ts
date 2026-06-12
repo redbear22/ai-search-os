@@ -7,6 +7,7 @@ import {
   parseAuditData,
 } from "@/lib/client-portal";
 import { computeShareOfVoice } from "@/lib/checkin-snapshot";
+import { getRootDomain } from "@/lib/domain-normalization";
 import { PLATFORMS } from "@/lib/mock-audit";
 import { prisma } from "@/lib/prisma";
 import type {
@@ -128,7 +129,7 @@ export function inferIndustry(domain: string | null, name: string): string {
 }
 
 export function getPublicationAuthorityMultiplier(publication: string): number {
-  const normalized = publication.toLowerCase().replace(/^https?:\/\//, "").split("/")[0] ?? "";
+  const normalized = getRootDomain(publication);
   for (const [key, value] of Object.entries(PUBLICATION_AUTHORITY)) {
     if (normalized.includes(key)) return value.multiplier;
   }

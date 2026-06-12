@@ -1,0 +1,10 @@
+# Railway dashboard (aisearchrank-agent-worker): Settings → Config File → /railway.worker.toml
+# Without this, Git/CLI deploys use railway.toml and the worker runs the web app.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile.agent-worker"
+
+[deploy]
+startCommand = "arq agent_api.arq_settings.WorkerSettings"
+restartPolicyType = "ON_FAILURE"

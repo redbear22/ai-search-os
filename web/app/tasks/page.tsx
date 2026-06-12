@@ -35,6 +35,7 @@ import { detectGapsRemote } from "@/lib/client/proprietary-api";
 import { generateSuggestedTasksFromGaps } from "@/lib/task-generator";
 import type { ProjectTask } from "@/types/task";
 import { TaskFeatureOverview } from "@/components/tasks/TaskFeatureOverview";
+import { useTasksDbSync } from "@/hooks/useWorkflowDb";
 
 const priorityColors = {
   critical: "bg-red-500",
@@ -76,6 +77,7 @@ export default function TasksPage() {
   const [newFolderDesc, setNewFolderDesc] = useState("");
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
+  useTasksDbSync();
 
   useEffect(() => {
     const unsub = useTaskStore.persist.onFinishHydration(() => setHydrated(true));

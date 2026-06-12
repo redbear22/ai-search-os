@@ -10,8 +10,8 @@ CREATE TABLE "AgencyBranding" (
     "reportHeader" TEXT,
     "reportFooter" TEXT,
     "features" JSONB NOT NULL DEFAULT '{"showRecommendations":true,"allowClientFeedback":true,"enableChat":false,"brandedEmails":false}',
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "AgencyBranding_agencyId_fkey" FOREIGN KEY ("agencyId") REFERENCES "Agency" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 

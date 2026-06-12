@@ -8,10 +8,10 @@ import { Sidebar } from "@/components/layout/sidebar";
 export function MainShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "";
   const isAuthPage = pathname === "/login" || pathname.startsWith("/auth");
-  const isLandingPage = pathname === "/";
+  const isMarketingPage = pathname === "/" || pathname === "/pricing";
   const isClientPortal = pathname.startsWith("/portal/");
 
-  if (isAuthPage || isLandingPage || isClientPortal) {
+  if (isAuthPage || isMarketingPage || isClientPortal) {
     return <>{children}</>;
   }
 

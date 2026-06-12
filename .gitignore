@@ -1,6 +1,7 @@
 # Environment
 .env
 .env.local
+.tmp-railway-vars.json
 .venv/
 venv/
 node_modules/
@@ -34,3 +35,4 @@ gsc_oauth_credentials.json
 Thumbs.db
 .idea/
 .vscode/
+.vercel

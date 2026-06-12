@@ -1,4 +1,5 @@
 import type { StoredAnalyticsEvent } from "@/lib/analytics-server";
+import { getDomainGroupKey } from "@/lib/domain-normalization";
 
 export interface AnalyticsDashboardStats {
   totalAudits: number;
@@ -113,7 +114,7 @@ export function normalizeGapSource(source?: string): string {
 
   const trimmed = source.trim();
   if (trimmed.includes(".")) {
-    return trimmed.replace(/^https?:\/\//, "").split("/")[0] || "unknown";
+    return getDomainGroupKey(trimmed) || "unknown";
   }
 
   return trimmed.slice(0, 64);

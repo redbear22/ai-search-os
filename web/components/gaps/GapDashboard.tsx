@@ -32,6 +32,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { AuditData } from "@/lib/audit-types";
 import type { GapFix } from "@/types";
 import { detectGapsRemote, generateFixRemote } from "@/lib/client/proprietary-api";
+import {
+  fetchGaps,
+  persistGaps,
+  updateGap,
+} from "@/lib/workflow-api";
+import { getWorkflowAuditDbId } from "@/hooks/useWorkflowDb";
+import { useSession } from "next-auth/react";
 import { getGapSummary, type Gap, type GapSeverity } from "@/types/gap";
 import { resolveDueWeek, truncateActionDescription } from "@/lib/gap-action";
 import {
@@ -49,6 +56,7 @@ import {
   syncPendingQueue,
 } from "@/lib/citation-engine-client";
 import { EmptyState } from "@/components/EmptyState";
+import { ProgressiveFeatureGate } from "@/components/ProgressiveFeatureGate";
 import { TooltipWrapper } from "@/components/TooltipWrapper";
 import { toast } from "sonner";
 import { toastApiError } from "@/lib/api-error";
@@ -167,18 +175,25 @@ function GapCard({
             <span className="font-medium">Timeline:</span> Week {gap.suggestedTimeline}
           </div>
         </div>
-        <TooltipWrapper content="Generate an AI action plan, pitch, and metrics for this gap">
-          <LoadingButton
-            size="sm"
-            onClick={() => onGenerateAction(gap)}
-            loading={loading}
-            disabled={isResolved(gap.id)}
-            className="h-10 w-full shrink-0 sm:h-9 sm:w-auto"
-          >
-            {!loading && <Sparkles className="mr-2 h-4 w-4" />}
-            {loading ? "Generating..." : isResolved(gap.id) ? "Action Created" : "Generate Fix"}
-          </LoadingButton>
-        </TooltipWrapper>
+        <ProgressiveFeatureGate
+          feature="aiFixGeneration"
+          customUpgradeMessage="Upgrade to Pro for AI-generated gap fixes, pitches, and action plans."
+          compact
+          className="h-10 w-full shrink-0 sm:h-9 sm:w-auto"
+        >
+          <TooltipWrapper content="Generate an AI action plan, pitch, and metrics for this gap">
+            <LoadingButton
+              size="sm"
+              onClick={() => onGenerateAction(gap)}
+              loading={loading}
+              disabled={isResolved(gap.id)}
+              className="h-10 w-full shrink-0 sm:h-9 sm:w-auto"
+            >
+              {!loading && <Sparkles className="mr-2 h-4 w-4" />}
+              {loading ? "Generating..." : isResolved(gap.id) ? "Action Created" : "Generate Fix"}
+            </LoadingButton>
+          </TooltipWrapper>
+        </ProgressiveFeatureGate>
       </div>
     </div>
   );
@@ -187,6 +202,7 @@ function GapCard({
 export function GapDashboard() {
   const isMobile = useMobile();
   const router = useRouter();
+  const { status: authStatus } = useSession();
   const auditData = useAuditStore(
     useShallow((s) => ({
       discoverability: s.discoverability,
@@ -275,29 +291,45 @@ export function GapDashboard() {
 
     let cancelled = false;
     setGapsLoading(true);
+    const auditId = getWorkflowAuditDbId() ?? undefined;
 
-    void detectGapsRemote(auditData)
-      .then((result) => {
-        if (!cancelled) {
-          setGaps(result.gaps);
+    void (async () => {
+      try {
+        if (authStatus === "authenticated") {
+          const stored = await fetchGaps(auditId);
+          if (cancelled) return;
+          if (stored.length > 0) {
+            setGaps(stored);
+            return;
+          }
         }
-      })
-      .catch(() => {
+
+        const result = await detectGapsRemote(auditData);
+        if (cancelled) return;
+        setGaps(result.gaps);
+
+        if (authStatus === "authenticated" && result.gaps.length > 0) {
+          const saved = await persistGaps({
+            auditId,
+            gaps: result.gaps,
+            replace: true,
+          });
+          if (!cancelled) setGaps(saved);
+        }
+      } catch {
         if (!cancelled) {
           toast.error("Failed to detect gaps");
           setGaps([]);
         }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setGapsLoading(false);
-        }
-      });
+      } finally {
+        if (!cancelled) setGapsLoading(false);
+      }
+    })();
 
     return () => {
       cancelled = true;
     };
-  }, [auditData, auditStarted]);
+  }, [auditData, auditStarted, authStatus]);
 
   useEffect(() => {
     if (auditStarted && gaps.length > 0) {
@@ -324,6 +356,9 @@ export function GapDashboard() {
       });
       setGeneratedFix(fix);
       trackFixGenerated(gap, fix.action.length);
+      if (authStatus === "authenticated") {
+        await updateGap(gap.id, { fixGenerated: fix, status: "fix_generated" });
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to generate fix");
     } finally {

@@ -9,12 +9,12 @@ CREATE TABLE "FixPipelineRun" (
     "steps" JSONB NOT NULL,
     "gapSnapshot" JSONB NOT NULL,
     "requiresApproval" BOOLEAN NOT NULL DEFAULT false,
-    "approvedAt" DATETIME,
+    "approvedAt" TIMESTAMP(3),
     "approvedBy" TEXT,
-    "sentAt" DATETIME,
-    "followupAt" DATETIME,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
-    "completedAt" DATETIME,
+    "sentAt" TIMESTAMP(3),
+    "followupAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "completedAt" TIMESTAMP(3),
     CONSTRAINT "FixPipelineRun_clientId_fkey" FOREIGN KEY ("clientId") REFERENCES "Client" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );

@@ -9,3 +9,5 @@ prisma/*.db-journal
 # Agency branding uploads (keep directory via .gitkeep)
 public/uploads/agency/**/*
 !public/uploads/agency/.gitkeep
+
+.vercel

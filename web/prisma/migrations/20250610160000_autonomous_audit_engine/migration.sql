@@ -5,8 +5,8 @@ CREATE TABLE "AutonomousAuditConfig" (
     "enabled" BOOLEAN NOT NULL DEFAULT false,
     "auditFrequency" TEXT NOT NULL DEFAULT 'weekly',
     "optimizedFrequency" TEXT,
-    "nextAuditAt" DATETIME,
-    "lastAuditAt" DATETIME,
+    "nextAuditAt" TIMESTAMP(3),
+    "lastAuditAt" TIMESTAMP(3),
     "triggerCitationSpike" BOOLEAN NOT NULL DEFAULT true,
     "triggerPlatformRelease" BOOLEAN NOT NULL DEFAULT true,
     "triggerDomainChange" BOOLEAN NOT NULL DEFAULT true,
@@ -16,8 +16,8 @@ CREATE TABLE "AutonomousAuditConfig" (
     "notifyClient" BOOLEAN NOT NULL DEFAULT false,
     "lastKnownDomain" TEXT,
     "citationBaseline" INTEGER,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "AutonomousAuditConfig_clientId_fkey" FOREIGN KEY ("clientId") REFERENCES "Client" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
@@ -35,8 +35,8 @@ CREATE TABLE "AutonomousAuditRun" (
     "auditId" TEXT,
     "intelligence" JSONB,
     "errorMessage" TEXT,
-    "startedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "completedAt" DATETIME,
+    "startedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "completedAt" TIMESTAMP(3),
     CONSTRAINT "AutonomousAuditRun_clientId_fkey" FOREIGN KEY ("clientId") REFERENCES "Client" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
@@ -50,7 +50,7 @@ CREATE TABLE "GapFixLearning" (
     "successCount" INTEGER NOT NULL DEFAULT 0,
     "attemptCount" INTEGER NOT NULL DEFAULT 0,
     "successRate" REAL NOT NULL DEFAULT 0,
-    "updatedAt" DATETIME NOT NULL
+    "updatedAt" TIMESTAMP(3) NOT NULL
 );
 
 -- CreateTable
@@ -58,7 +58,7 @@ CREATE TABLE "PlatformReleaseEvent" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "platform" TEXT NOT NULL,
     "version" TEXT NOT NULL,
-    "releasedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "releasedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "processed" BOOLEAN NOT NULL DEFAULT false
 );
 

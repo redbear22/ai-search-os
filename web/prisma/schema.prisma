@@ -26,6 +26,10 @@ model User {
   ownedAgencies Agency[]         @relation("AgencyOwner")
   assignments   AgencyMemberAssignment[]
   invitesSent   AgencyInvite[]   @relation("InviteSender")
+  audits        Audit[]
+  auditJobs     AuditJob[]
+  taskProjects  TaskProject[]
+  domains       Domain[]
 }
 
 model Account {
@@ -78,6 +82,7 @@ model Agency {
   apiKeys        ApiKey[]
   oauthClients   OAuthClient[]
   apiWebhooks    ApiWebhook[]
+  domains        Domain[]
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 }
@@ -201,6 +206,8 @@ model Client {
   autonomousAuditConfig  AutonomousAuditConfig?
   autonomousAuditRuns    AutonomousAuditRun[]
   fixPipelineRuns        FixPipelineRun[]
+  taskProjects           TaskProject[]
+  auditJobs              AuditJob[]
   createdAt              DateTime               @default(now())
   updatedAt              DateTime               @updatedAt
 }
@@ -347,14 +354,23 @@ model Subscription {
 }
 
 model Audit {
-  id        String   @id @default(uuid())
-  clientId  String
-  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  brandName String
-  domain    String
-  auditData Json
-  gapCount  Int
-  createdAt DateTime @default(now())
+  id          String   @id @default(uuid())
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  brandName   String
+  domain      String
+  auditData   Json
+  gapCount    Int      @default(0)
+  isCompleted Boolean  @default(false)
+  completedAt DateTime?
+  gaps        Gap[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([clientId, updatedAt])
+  @@index([userId])
 }
 
 model ActionPlan {
@@ -377,6 +393,8 @@ model Gap {
   id                String   @id @default(uuid())
   clientId          String
   client            Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  auditId           String?
+  audit             Audit?   @relation(fields: [auditId], references: [id], onDelete: SetNull)
   layer             String
   severity          String
   title             String
@@ -384,9 +402,52 @@ model Gap {
   suggestedOwner    String?
   suggestedTimeline String?
   status            String   @default("open")
+  fixGenerated      Json?
   sourceData        Json?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+
+  @@index([clientId, status])
+  @@index([auditId])
+}
+
+model TaskProject {
+  id          String   @id @default(uuid())
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  description String   @default("")
+  sortOrder   Int      @default(0)
+  tasks       Task[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([clientId, sortOrder])
+}
+
+model Task {
+  id                    String      @id @default(uuid())
+  projectId             String
+  project               TaskProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title                 String
+  description           String      @default("")
+  status                String      @default("not_started")
+  priority              String      @default("medium")
+  gapId                 String?
+  checklist             Json        @default("[]")
+  dueDate               DateTime?
+  estimatedTime         String      @default("")
+  assignedTo            String?
+  suggestedActionPlan   String      @default("")
+  resourcesNeeded       Json        @default("[]")
+  sortOrder             Int         @default(0)
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+  completedAt           DateTime?
+
+  @@index([projectId, sortOrder])
 }
 
 enum UserRole {
@@ -407,4 +468,81 @@ enum PlanType {
   PRO
   AGENCY
   ENTERPRISE
+}
+
+/// Agency-scoped domain registry for plan limits (who added it: userId).
+model Domain {
+  id               String   @id @default(cuid())
+  agencyId         String
+  agency           Agency   @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  userId           String
+  url              String
+  isActive         Boolean  @default(true)
+  treatAsSeparate  Boolean  @default(false)
+  separationReason String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  user             User     @relation(fields: [userId], references: [id])
+
+  @@unique([agencyId, url])
+  @@index([agencyId, isActive])
+}
+
+/// Agent API — async audit jobs (arq worker + Postgres state of record)
+model AuditJob {
+  id        String         @id @default(uuid())
+  siteUrl   String         @map("site_url")
+  clientId  String?        @map("client_id")
+  client    Client?        @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  status    AuditJobStatus @default(QUEUED)
+  progress  Int            @default(0)
+  stage     String?
+  error     String?
+  result    Json?
+  createdBy String         @map("created_by")
+  user      User           @relation(fields: [createdBy], references: [id], onDelete: Restrict)
+  createdAt DateTime       @default(now()) @map("created_at")
+  updatedAt DateTime       @updatedAt @map("updated_at")
+
+  @@index([createdBy])
+  @@index([clientId])
+  @@index([status])
+  @@map("audit_jobs")
+}
+
+enum AuditJobStatus {
+  QUEUED
+  RUNNING
+  DONE
+  FAILED
+}
+
+/// Citation Engine — competitive audit reports (sources API)
+model CitationAuditRun {
+  id               String   @id @default(uuid())
+  siteId           String   @default("default") @map("site_id")
+  projectProfileId Int      @default(1) @map("project_profile_id")
+  keyword          String
+  reportJson       Json     @map("report_json")
+  winScore         Float    @default(0) @map("win_score")
+  pagesAudited     Int      @default(0) @map("pages_audited")
+  source           String   @default("")
+  gapId            String?  @map("gap_id")
+  rubricPct        Float    @default(0) @map("rubric_pct")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@index([siteId, keyword])
+  @@index([siteId, projectProfileId, createdAt])
+  @@map("citation_audit_runs")
+}
+
+/// Citation Engine — ingested content payloads (push from web / Agent API)
+model CitationContentIngest {
+  id        String   @id @default(uuid())
+  siteId    String   @default("default") @map("site_id")
+  payload   Json
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([siteId, createdAt])
+  @@map("citation_content_ingest")
 }
