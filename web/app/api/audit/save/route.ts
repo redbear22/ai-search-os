@@ -3,6 +3,7 @@ import type { AuditData } from "@/lib/audit-types";
 import { prisma } from "@/lib/prisma";
 import { requireWorkflowContext } from "@/lib/workflow-access";
 import { auditRowToEnvelope } from "@/lib/workflow-mappers";
+import { workflowErrorResponse } from "@/lib/workflow-route";
 
 type SaveAuditBody = {
   id?: string;
@@ -30,73 +31,77 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "auditData is required" }, { status: 400 });
   }
 
-  const domain = (body.domain ?? body.url ?? "").trim() || "unknown";
-  const brandName = body.brandName?.trim() || domain;
-  const isCompleted = body.isCompleted === true;
-  const completedAt =
-    body.completedAt != null
-      ? new Date(body.completedAt)
-      : isCompleted
-        ? new Date()
-        : null;
+  try {
+    const domain = (body.domain ?? body.url ?? "").trim() || "unknown";
+    const brandName = body.brandName?.trim() || domain;
+    const isCompleted = body.isCompleted === true;
+    const completedAt =
+      body.completedAt != null
+        ? new Date(body.completedAt)
+        : isCompleted
+          ? new Date()
+          : null;
 
-  if (body.id) {
-    const existing = await prisma.audit.findFirst({
-      where: { id: body.id, clientId: ctx.clientId },
-    });
-    if (!existing) {
-      return NextResponse.json({ error: "Audit not found" }, { status: 404 });
+    if (body.id) {
+      const existing = await prisma.audit.findFirst({
+        where: { id: body.id, clientId: ctx.clientId },
+      });
+      if (!existing) {
+        return NextResponse.json({ error: "Audit not found" }, { status: 404 });
+      }
+
+      const updated = await prisma.audit.update({
+        where: { id: body.id },
+        data: {
+          brandName,
+          domain,
+          auditData: body.auditData,
+          gapCount: body.gapCount ?? existing.gapCount,
+          isCompleted,
+          completedAt,
+          userId: ctx.userId,
+        },
+      });
+
+      return NextResponse.json({ audit: auditRowToEnvelope(updated) });
     }
 
-    const updated = await prisma.audit.update({
-      where: { id: body.id },
+    const latest = await prisma.audit.findFirst({
+      where: { clientId: ctx.clientId },
+      orderBy: { updatedAt: "desc" },
+    });
+
+    if (latest && !latest.isCompleted) {
+      const updated = await prisma.audit.update({
+        where: { id: latest.id },
+        data: {
+          brandName,
+          domain,
+          auditData: body.auditData,
+          gapCount: body.gapCount ?? latest.gapCount,
+          isCompleted,
+          completedAt,
+          userId: ctx.userId,
+        },
+      });
+      return NextResponse.json({ audit: auditRowToEnvelope(updated) });
+    }
+
+    const created = await prisma.audit.create({
       data: {
+        clientId: ctx.clientId,
+        userId: ctx.userId,
         brandName,
         domain,
         auditData: body.auditData,
-        gapCount: body.gapCount ?? existing.gapCount,
+        gapCount: body.gapCount ?? 0,
         isCompleted,
         completedAt,
-        userId: ctx.userId,
       },
     });
 
-    return NextResponse.json({ audit: auditRowToEnvelope(updated) });
+    return NextResponse.json({ audit: auditRowToEnvelope(created) }, { status: 201 });
+  } catch (error) {
+    return workflowErrorResponse(error);
   }
-
-  const latest = await prisma.audit.findFirst({
-    where: { clientId: ctx.clientId },
-    orderBy: { updatedAt: "desc" },
-  });
-
-  if (latest && !latest.isCompleted) {
-    const updated = await prisma.audit.update({
-      where: { id: latest.id },
-      data: {
-        brandName,
-        domain,
-        auditData: body.auditData,
-        gapCount: body.gapCount ?? latest.gapCount,
-        isCompleted,
-        completedAt,
-        userId: ctx.userId,
-      },
-    });
-    return NextResponse.json({ audit: auditRowToEnvelope(updated) });
-  }
-
-  const created = await prisma.audit.create({
-    data: {
-      clientId: ctx.clientId,
-      userId: ctx.userId,
-      brandName,
-      domain,
-      auditData: body.auditData,
-      gapCount: body.gapCount ?? 0,
-      isCompleted,
-      completedAt,
-    },
-  });
-
-  return NextResponse.json({ audit: auditRowToEnvelope(created) }, { status: 201 });
 }

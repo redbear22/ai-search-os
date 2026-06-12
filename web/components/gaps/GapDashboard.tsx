@@ -32,12 +32,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { AuditData } from "@/lib/audit-types";
 import type { GapFix } from "@/types";
 import { detectGapsRemote, generateFixRemote } from "@/lib/client/proprietary-api";
+import { parseApiJson } from "@/lib/parse-api-response";
 import {
   fetchGaps,
   persistGaps,
   updateGap,
 } from "@/lib/workflow-api";
-import { getWorkflowAuditDbId } from "@/hooks/useWorkflowDb";
+import { getWorkflowAuditDbId, setWorkflowAuditDbId } from "@/hooks/useWorkflowDb";
 import { useAgentFix } from "@/hooks/useAgentFix";
 import { useSession } from "next-auth/react";
 import { getGapSummary, type Gap, type GapSeverity } from "@/types/gap";
@@ -260,8 +261,11 @@ export function GapDashboard() {
 
   useEffect(() => {
     void fetch("/api/citation-engine/status")
-      .then((response) => response.json())
-      .then((data: { pushAvailable?: boolean }) => {
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error("Citation engine status unavailable");
+        }
+        const data = await parseApiJson<{ pushAvailable?: boolean }>(response);
         const available = data.pushAvailable === true;
         setPushConfigured(available);
         if (available) {
@@ -342,12 +346,26 @@ export function GapDashboard() {
         setGaps(result.gaps);
 
         if (authStatus === "authenticated" && result.gaps.length > 0) {
-          const saved = await persistGaps({
-            auditId,
-            gaps: result.gaps,
-            replace: true,
-          });
-          if (!cancelled) setGaps(saved);
+          try {
+            const saved = await persistGaps({
+              auditId,
+              gaps: result.gaps,
+              replace: true,
+            });
+            if (!cancelled) setGaps(saved);
+          } catch (error) {
+            const message = error instanceof Error ? error.message : "";
+            if (auditId && message.includes("Audit not found")) {
+              setWorkflowAuditDbId(null);
+              const saved = await persistGaps({
+                gaps: result.gaps,
+                replace: true,
+              });
+              if (!cancelled) setGaps(saved);
+            } else {
+              throw error;
+            }
+          }
         }
       } catch {
         if (!cancelled) {

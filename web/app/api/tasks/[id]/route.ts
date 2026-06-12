@@ -8,6 +8,7 @@ import {
   projectTaskToDbFields,
   taskRowToProjectTask,
 } from "@/lib/workflow-mappers";
+import { workflowErrorResponse } from "@/lib/workflow-route";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -19,8 +20,9 @@ export async function PUT(request: Request, context: RouteContext) {
   const { searchParams } = new URL(request.url);
   const kind = searchParams.get("kind") ?? "task";
 
-  if (kind === "folder") {
-    const body = (await request.json()) as Partial<ProjectFolder>;
+  try {
+    if (kind === "folder") {
+      const body = (await request.json()) as Partial<ProjectFolder>;
     const project = await prisma.taskProject.findFirst({
       where: { id, clientId: ctx.clientId },
     });
@@ -66,6 +68,9 @@ export async function PUT(request: Request, context: RouteContext) {
   });
 
   return NextResponse.json({ task: taskRowToProjectTask(updated) });
+  } catch (error) {
+    return workflowErrorResponse(error);
+  }
 }
 
 export async function DELETE(request: Request, context: RouteContext) {
@@ -76,7 +81,8 @@ export async function DELETE(request: Request, context: RouteContext) {
   const { searchParams } = new URL(request.url);
   const kind = searchParams.get("kind") ?? "task";
 
-  if (kind === "folder") {
+  try {
+    if (kind === "folder") {
     const project = await prisma.taskProject.findFirst({
       where: { id, clientId: ctx.clientId },
     });
@@ -96,4 +102,7 @@ export async function DELETE(request: Request, context: RouteContext) {
 
   await prisma.task.delete({ where: { id } });
   return NextResponse.json({ ok: true });
+  } catch (error) {
+    return workflowErrorResponse(error);
+  }
 }

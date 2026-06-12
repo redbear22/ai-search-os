@@ -20,9 +20,7 @@ export type AgentAuditResult = {
   }>;
 };
 
-async function parseJson<T>(response: Response): Promise<T> {
-  return (await response.json()) as T;
-}
+import { parseApiJson } from "@/lib/parse-api-response";
 
 export async function startAgentAudit(domain: string): Promise<{ job_id: string; status: string }> {
   const res = await fetch("/api/audit/agent/run", {
@@ -30,7 +28,7 @@ export async function startAgentAudit(domain: string): Promise<{ job_id: string;
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ domain }),
   });
-  const data = await parseJson<{ job_id?: string; status?: string; error?: string }>(res);
+  const data = await parseApiJson<{ job_id?: string; status?: string; error?: string }>(res);
   if (!res.ok || !data.job_id) {
     throw new Error(data.error ?? "Failed to start agent audit");
   }
@@ -39,7 +37,7 @@ export async function startAgentAudit(domain: string): Promise<{ job_id: string;
 
 export async function fetchAgentAuditStatus(jobId: string): Promise<AgentAuditStatus> {
   const res = await fetch(`/api/audit/agent/status/${encodeURIComponent(jobId)}`);
-  const data = await parseJson<AgentAuditStatus & { error?: string }>(res);
+  const data = await parseApiJson<AgentAuditStatus & { error?: string }>(res);
   if (!res.ok) {
     throw new Error(data.error ?? "Failed to fetch audit status");
   }
@@ -48,7 +46,7 @@ export async function fetchAgentAuditStatus(jobId: string): Promise<AgentAuditSt
 
 export async function fetchAgentAuditResult(jobId: string): Promise<AgentAuditResult> {
   const res = await fetch(`/api/audit/agent/result/${encodeURIComponent(jobId)}`);
-  const data = await parseJson<AgentAuditResult & { error?: string }>(res);
+  const data = await parseApiJson<AgentAuditResult & { error?: string }>(res);
   if (!res.ok) {
     throw new Error(data.error ?? "Failed to fetch audit result");
   }

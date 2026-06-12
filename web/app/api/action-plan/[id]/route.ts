@@ -3,6 +3,7 @@ import type { Action } from "@/store/actionStore";
 import { prisma } from "@/lib/prisma";
 import { requireWorkflowContext } from "@/lib/workflow-access";
 import { actionPlanToAction, actionToActionPlanFields } from "@/lib/workflow-mappers";
+import { workflowErrorResponse } from "@/lib/workflow-route";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -11,9 +12,15 @@ export async function PUT(request: Request, context: RouteContext) {
   if (ctx instanceof NextResponse) return ctx;
 
   const { id } = await context.params;
-  const body = (await request.json()) as Partial<Action>;
+  let body: Partial<Action>;
+  try {
+    body = (await request.json()) as Partial<Action>;
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
 
-  const existing = await prisma.actionPlan.findFirst({
+  try {
+    const existing = await prisma.actionPlan.findFirst({
     where: { id, clientId: ctx.clientId },
   });
   if (!existing) {
@@ -32,6 +39,9 @@ export async function PUT(request: Request, context: RouteContext) {
   });
 
   return NextResponse.json({ action: actionPlanToAction(updated) });
+  } catch (error) {
+    return workflowErrorResponse(error);
+  }
 }
 
 export async function DELETE(_request: Request, context: RouteContext) {
@@ -39,7 +49,8 @@ export async function DELETE(_request: Request, context: RouteContext) {
   if (ctx instanceof NextResponse) return ctx;
 
   const { id } = await context.params;
-  const existing = await prisma.actionPlan.findFirst({
+  try {
+    const existing = await prisma.actionPlan.findFirst({
     where: { id, clientId: ctx.clientId },
   });
   if (!existing) {
@@ -48,4 +59,7 @@ export async function DELETE(_request: Request, context: RouteContext) {
 
   await prisma.actionPlan.delete({ where: { id } });
   return NextResponse.json({ ok: true });
+  } catch (error) {
+    return workflowErrorResponse(error);
+  }
 }

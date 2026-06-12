@@ -8,6 +8,7 @@ import {
   projectTaskToDbFields,
   taskRowToProjectTask,
 } from "@/lib/workflow-mappers";
+import { workflowErrorResponse } from "@/lib/workflow-route";
 
 async function loadFolders(clientId: string) {
   const projects = await prisma.taskProject.findMany({
@@ -22,8 +23,12 @@ export async function GET() {
   const ctx = await requireWorkflowContext();
   if (ctx instanceof NextResponse) return ctx;
 
-  const folders = await loadFolders(ctx.clientId);
-  return NextResponse.json({ folders });
+  try {
+    const folders = await loadFolders(ctx.clientId);
+    return NextResponse.json({ folders });
+  } catch (error) {
+    return workflowErrorResponse(error);
+  }
 }
 
 type PostTasksBody =
@@ -48,7 +53,8 @@ export async function POST(request: Request) {
 
   const body = (await request.json()) as PostTasksBody;
 
-  if (body.type === "folder") {
+  try {
+    if (body.type === "folder") {
     const maxSort = await prisma.taskProject.aggregate({
       where: { clientId: ctx.clientId },
       _max: { sortOrder: true },
@@ -147,4 +153,7 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({ error: "Invalid type" }, { status: 400 });
+  } catch (error) {
+    return workflowErrorResponse(error);
+  }
 }

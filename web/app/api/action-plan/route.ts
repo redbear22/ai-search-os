@@ -3,19 +3,24 @@ import type { Action } from "@/store/actionStore";
 import { prisma } from "@/lib/prisma";
 import { requireWorkflowContext } from "@/lib/workflow-access";
 import { actionPlanToAction, actionToActionPlanFields } from "@/lib/workflow-mappers";
+import { workflowErrorResponse } from "@/lib/workflow-route";
 
 export async function GET() {
   const ctx = await requireWorkflowContext();
   if (ctx instanceof NextResponse) return ctx;
 
-  const rows = await prisma.actionPlan.findMany({
-    where: { clientId: ctx.clientId },
-    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-  });
+  try {
+    const rows = await prisma.actionPlan.findMany({
+      where: { clientId: ctx.clientId },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    });
 
-  return NextResponse.json({
-    actions: rows.map(actionPlanToAction),
-  });
+    return NextResponse.json({
+      actions: rows.map(actionPlanToAction),
+    });
+  } catch (error) {
+    return workflowErrorResponse(error);
+  }
 }
 
 export async function POST(request: Request) {
@@ -29,7 +34,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "action or actions required" }, { status: 400 });
   }
 
-  const maxSort = await prisma.actionPlan.aggregate({
+  try {
+    const maxSort = await prisma.actionPlan.aggregate({
     where: { clientId: ctx.clientId },
     _max: { sortOrder: true },
   });
@@ -47,6 +53,9 @@ export async function POST(request: Request) {
     { actions: created.map(actionPlanToAction) },
     { status: 201 }
   );
+  } catch (error) {
+    return workflowErrorResponse(error);
+  }
 }
 
 export async function PUT(request: Request) {
@@ -58,7 +67,8 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: "actions array required" }, { status: 400 });
   }
 
-  await prisma.$transaction(async (tx) => {
+  try {
+    await prisma.$transaction(async (tx) => {
     await tx.actionPlan.deleteMany({ where: { clientId: ctx.clientId } });
     let sortOrder = 0;
     for (const action of body.actions) {
@@ -75,4 +85,7 @@ export async function PUT(request: Request) {
   });
 
   return NextResponse.json({ actions: rows.map(actionPlanToAction) });
+  } catch (error) {
+    return workflowErrorResponse(error);
+  }
 }

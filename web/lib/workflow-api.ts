@@ -4,10 +4,7 @@ import type { Gap } from "@/types/gap";
 import type { ProjectFolder, ProjectTask } from "@/types/task";
 import type { GapFix } from "@/types";
 import type { PersistedAuditEnvelope } from "@/lib/workflow-mappers";
-
-async function parseJson<T>(response: Response): Promise<T> {
-  return (await response.json()) as T;
-}
+import { parseApiJson } from "@/lib/parse-api-response";
 
 export function isWorkflowAuthError(status: number): boolean {
   return status === 401 || status === 403 || status === 404 || status === 429 || status === 503;
@@ -19,7 +16,7 @@ export async function fetchCurrentAudit(): Promise<PersistedAuditEnvelope | null
     if (isWorkflowAuthError(res.status)) return null;
     throw new Error("Failed to load audit");
   }
-  const data = await parseJson<{ audit: PersistedAuditEnvelope | null }>(res);
+  const data = await parseApiJson<{ audit: PersistedAuditEnvelope | null }>(res);
   return data.audit;
 }
 
@@ -45,7 +42,7 @@ export async function saveAudit(input: {
       gapCount: input.gapCount,
     }),
   });
-  const data = await parseJson<{ audit?: PersistedAuditEnvelope; error?: string }>(res);
+  const data = await parseApiJson<{ audit?: PersistedAuditEnvelope; error?: string }>(res);
   if (!res.ok || !data.audit) {
     throw new Error(data.error ?? "Failed to save audit");
   }
@@ -61,7 +58,7 @@ export async function fetchGaps(auditId?: string): Promise<Gap[]> {
     if (isWorkflowAuthError(res.status)) return [];
     throw new Error("Failed to load gaps");
   }
-  const data = await parseJson<{ gaps: Gap[] }>(res);
+  const data = await parseApiJson<{ gaps: Gap[] }>(res);
   return data.gaps;
 }
 
@@ -75,7 +72,7 @@ export async function persistGaps(input: {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
-  const data = await parseJson<{ gaps: Gap[]; error?: string }>(res);
+  const data = await parseApiJson<{ gaps: Gap[]; error?: string }>(res);
   if (!res.ok) {
     throw new Error(data.error ?? "Failed to save gaps");
   }
@@ -92,7 +89,7 @@ export async function updateGap(
     body: JSON.stringify(patch),
   });
   if (!res.ok) {
-    const data = await parseJson<{ error?: string }>(res);
+    const data = await parseApiJson<{ error?: string }>(res);
     throw new Error(data.error ?? "Failed to update gap");
   }
 }
@@ -103,7 +100,7 @@ export async function fetchActionPlan(): Promise<Action[]> {
     if (isWorkflowAuthError(res.status)) return [];
     throw new Error("Failed to load action plan");
   }
-  const data = await parseJson<{ actions: Action[] }>(res);
+  const data = await parseApiJson<{ actions: Action[] }>(res);
   return data.actions;
 }
 
@@ -113,7 +110,7 @@ export async function syncActionPlan(actions: Action[]): Promise<Action[]> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ actions }),
   });
-  const data = await parseJson<{ actions: Action[]; error?: string }>(res);
+  const data = await parseApiJson<{ actions: Action[]; error?: string }>(res);
   if (!res.ok) {
     throw new Error(data.error ?? "Failed to sync action plan");
   }
@@ -126,7 +123,7 @@ export async function fetchTaskFolders(): Promise<ProjectFolder[]> {
     if (isWorkflowAuthError(res.status)) return [];
     throw new Error("Failed to load tasks");
   }
-  const data = await parseJson<{ folders: ProjectFolder[] }>(res);
+  const data = await parseApiJson<{ folders: ProjectFolder[] }>(res);
   return (data.folders ?? []).map((folder) => ({
     ...folder,
     createdAt: new Date(folder.createdAt),
@@ -150,7 +147,7 @@ export async function syncTaskFolders(folders: ProjectFolder[]): Promise<Project
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ type: "sync", folders }),
   });
-  const data = await parseJson<{ folders: ProjectFolder[]; error?: string }>(res);
+  const data = await parseApiJson<{ folders: ProjectFolder[]; error?: string }>(res);
   if (!res.ok) {
     throw new Error(data.error ?? "Failed to sync tasks");
   }
@@ -163,7 +160,7 @@ export async function createTaskFolder(name: string, description = ""): Promise<
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ type: "folder", name, description }),
   });
-  const data = await parseJson<{ folder: ProjectFolder; error?: string }>(res);
+  const data = await parseApiJson<{ folder: ProjectFolder; error?: string }>(res);
   if (!res.ok || !data.folder) {
     throw new Error(data.error ?? "Failed to create folder");
   }
@@ -179,7 +176,7 @@ export async function createTask(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ type: "task", projectId, task }),
   });
-  const data = await parseJson<{ task: ProjectTask; error?: string }>(res);
+  const data = await parseApiJson<{ task: ProjectTask; error?: string }>(res);
   if (!res.ok || !data.task) {
     throw new Error(data.error ?? "Failed to create task");
   }

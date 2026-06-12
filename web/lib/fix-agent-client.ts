@@ -26,9 +26,7 @@ export type AgentFixResult = {
   fixes: AgentFixDraft[];
 };
 
-async function parseJson<T>(response: Response): Promise<T> {
-  return (await response.json()) as T;
-}
+import { parseApiJson } from "@/lib/parse-api-response";
 
 export function gapToAgentFixInput(gap: Gap): {
   layer: string;
@@ -74,7 +72,7 @@ export async function startAgentFix(input: {
       gaps: gaps.map(gapToAgentFixInput),
     }),
   });
-  const data = await parseJson<{ job_id?: string; status?: string; error?: string }>(res);
+  const data = await parseApiJson<{ job_id?: string; status?: string; error?: string }>(res);
   if (!res.ok || !data.job_id) {
     throw new Error(data.error ?? "Failed to start agent fix job");
   }
@@ -83,7 +81,7 @@ export async function startAgentFix(input: {
 
 export async function fetchAgentFixStatus(jobId: string): Promise<AgentFixStatus> {
   const res = await fetch(`/api/fix/agent/status/${encodeURIComponent(jobId)}`);
-  const data = await parseJson<AgentFixStatus & { error?: string }>(res);
+  const data = await parseApiJson<AgentFixStatus & { error?: string }>(res);
   if (!res.ok) {
     throw new Error(data.error ?? "Failed to fetch fix status");
   }
@@ -92,7 +90,7 @@ export async function fetchAgentFixStatus(jobId: string): Promise<AgentFixStatus
 
 export async function fetchAgentFixResult(jobId: string): Promise<AgentFixResult> {
   const res = await fetch(`/api/fix/agent/result/${encodeURIComponent(jobId)}`);
-  const data = await parseJson<AgentFixResult & { error?: string }>(res);
+  const data = await parseApiJson<AgentFixResult & { error?: string }>(res);
   if (!res.ok) {
     throw new Error(data.error ?? "Failed to fetch fix result");
   }

@@ -4,6 +4,7 @@ import type { GapFix } from "@/types";
 import { prisma } from "@/lib/prisma";
 import { requireWorkflowContext } from "@/lib/workflow-access";
 import { dbGapToUiGap } from "@/lib/workflow-mappers";
+import { workflowErrorResponse } from "@/lib/workflow-route";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -12,14 +13,20 @@ export async function PUT(request: Request, context: RouteContext) {
   if (ctx instanceof NextResponse) return ctx;
 
   const { id } = await context.params;
-  const body = (await request.json()) as {
+  let body: {
     status?: string;
     fixGenerated?: GapFix | null;
     title?: string;
     severity?: string;
   };
+  try {
+    body = (await request.json()) as typeof body;
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
 
-  const existing = await prisma.gap.findFirst({
+  try {
+    const existing = await prisma.gap.findFirst({
     where: { id, clientId: ctx.clientId },
   });
   if (!existing) {
@@ -45,6 +52,9 @@ export async function PUT(request: Request, context: RouteContext) {
   });
 
   return NextResponse.json({ gap: dbGapToUiGap(updated) });
+  } catch (error) {
+    return workflowErrorResponse(error);
+  }
 }
 
 export async function DELETE(_request: Request, context: RouteContext) {
@@ -52,7 +62,8 @@ export async function DELETE(_request: Request, context: RouteContext) {
   if (ctx instanceof NextResponse) return ctx;
 
   const { id } = await context.params;
-  const existing = await prisma.gap.findFirst({
+  try {
+    const existing = await prisma.gap.findFirst({
     where: { id, clientId: ctx.clientId },
   });
   if (!existing) {
@@ -65,4 +76,7 @@ export async function DELETE(_request: Request, context: RouteContext) {
   });
 
   return NextResponse.json({ ok: true });
+  } catch (error) {
+    return workflowErrorResponse(error);
+  }
 }

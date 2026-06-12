@@ -30,9 +30,7 @@ export type CitationScoreResponse = {
   error?: string;
 };
 
-async function parseJson<T>(response: Response): Promise<T> {
-  return (await response.json()) as T;
-}
+import { parseApiJson } from "@/lib/parse-api-response";
 
 export async function detectGapsRemote(auditData: AuditData): Promise<DetectGapsResponse> {
   const response = await fetch("/api/gaps/detect", {
@@ -40,7 +38,7 @@ export async function detectGapsRemote(auditData: AuditData): Promise<DetectGaps
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ auditData }),
   });
-  const data = await parseJson<DetectGapsResponse>(response);
+  const data = await parseApiJson<DetectGapsResponse>(response);
   if (!response.ok) {
     throw new Error(data.error ?? "Gap detection failed");
   }
@@ -65,7 +63,7 @@ export async function generateFixRemote(input: {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
-  const data = await parseJson<GenerateFixResponse>(response);
+  const data = await parseApiJson<GenerateFixResponse>(response);
   if (!response.ok || !data.success || !data.fix) {
     throw new Error(data.error ?? "Fix generation failed");
   }
@@ -88,7 +86,7 @@ export async function scoreCitationRemote(input: {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
-  const data = await parseJson<CitationScoreResponse>(response);
+  const data = await parseApiJson<CitationScoreResponse>(response);
   if (!response.ok) {
     throw new Error(data.error ?? "Citation scoring failed");
   }
