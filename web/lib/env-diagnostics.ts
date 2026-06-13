@@ -151,6 +151,7 @@ export function getServiceDefinitions(): ServiceDefinition[] {
     secretVar("GOOGLE_GSC_CLIENT_SECRET", false),
     secretVar("GOOGLE_GSC_REFRESH_TOKEN", false),
   ];
+  const youtubeVars = [secretVar("YOUTUBE_API_KEY", false)];
   const googleOAuthVars = [
     plainVar("NEXTAUTH_URL"),
     secretVar("NEXTAUTH_SECRET"),
@@ -250,6 +251,15 @@ export function getServiceDefinitions(): ServiceDefinition[] {
         gscVars[1].set &&
         gscVars[2].set &&
         gscVars[3].set,
+      optional: true,
+    },
+    {
+      id: "youtube",
+      name: "YouTube Data API",
+      description: "AI Source Intelligence — top YouTube videos by topic",
+      envFile: "web/.env.local",
+      vars: youtubeVars,
+      configured: youtubeVars[0].set,
       optional: true,
     },
     {

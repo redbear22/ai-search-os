@@ -27,6 +27,7 @@ import {
   Users,
   Bug,
   Search,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AgencyRole } from "@prisma/client";
@@ -89,6 +90,12 @@ const navItems: NavItem[] = [
     id: "nav-crawler-logs",
   },
   { name: "KPIs", href: "/kpis", icon: BarChart3, id: "nav-kpis" },
+  {
+    name: "AI Sources",
+    href: "/ai-sources",
+    icon: MessageSquare,
+    id: "nav-ai-sources",
+  },
   {
     name: "Agent Readiness",
     href: "/agent-readiness",
