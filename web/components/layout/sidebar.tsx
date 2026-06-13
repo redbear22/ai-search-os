@@ -12,6 +12,7 @@ import {
   Cpu,
   Gauge,
   Radar,
+  LineChart,
   GitCompare,
   AlertTriangle,
   Calendar,
@@ -41,6 +42,12 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   { name: "Dashboard", href: "/dashboard", icon: TrendingUp },
+  {
+    name: "Search Console",
+    href: "/dashboard/gsc",
+    icon: LineChart,
+    id: "nav-gsc",
+  },
   { name: "Agency", href: "/agency", icon: Building2, id: "nav-agency" },
   {
     name: "Team",

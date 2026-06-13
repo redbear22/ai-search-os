@@ -61,8 +61,19 @@ function isPublicPath(pathname: string): boolean {
 // (e.g. reports.agency.com) to the agency portal/reports. Requires DNS CNAME +
 // middleware host lookup against AgencyBranding.customDomain before auth redirect.
 
+const AGENCY_CLIENT_AUDIT_REDIRECT =
+  /^\/agency\/clients\/([^/]+)\/(autonomous|fixes)\/?$/;
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  const agencyAuditRedirect = pathname.match(AGENCY_CLIENT_AUDIT_REDIRECT);
+  if (agencyAuditRedirect) {
+    const clientId = agencyAuditRedirect[1];
+    const url = new URL("/audit", request.url);
+    url.searchParams.set("clientId", clientId);
+    return NextResponse.redirect(url);
+  }
 
   // Fast-path NextAuth and other public API routes (no jitter, no DB imports).
   if (pathname.startsWith("/api/auth")) {
