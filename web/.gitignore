@@ -11,3 +11,6 @@ public/uploads/agency/**/*
 !public/uploads/agency/.gitkeep
 
 .vercel
+
+.env.vercel.probe
+.vercel-inspect*.json
