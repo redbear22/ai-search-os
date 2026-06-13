@@ -235,7 +235,7 @@ export function GapDashboard() {
   const isMobile = useMobile();
   const router = useRouter();
   const { status: authStatus } = useSession();
-  const { runAgentFix, isRunning: isAgentRunning } = useAgentFix();
+  const { runAgentFix, isRunning: isAgentRunning, jobStatus } = useAgentFix();
   const auditData = useAuditStore(
     useShallow((s) => ({
       discoverability: s.discoverability,
@@ -683,10 +683,18 @@ export function GapDashboard() {
             </DialogDescription>
           </DialogHeader>
 
-          {isGenerating ? (
+          {isGenerating || isAgentRunning ? (
             <div className="flex flex-col items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="mt-4 text-muted-foreground">Generating fix...</p>
+              <p className="mt-4 text-muted-foreground">
+                {isAgentRunning ? "Cloud agent generating fix…" : "Generating fix..."}
+              </p>
+              {isAgentRunning && jobStatus && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {jobStatus.stage ?? jobStatus.status}
+                  {jobStatus.progress > 0 ? ` · ${jobStatus.progress}%` : ""}
+                </p>
+              )}
             </div>
           ) : generatedFix ? (
             <div className="space-y-4">
