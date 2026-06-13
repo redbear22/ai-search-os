@@ -1,423 +1,605 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { Menu, X } from "lucide-react";
 import { UserMenu } from "@/components/UserMenu";
-import { DOMAIN_SLOT_FOOTNOTE, PRICING_PLANS } from "@/lib/pricing-plans";
 import {
-  AlertTriangle,
-  BarChart3,
-  Bot,
-  Calendar,
-  Check,
-  CheckCircle,
-  Eye,
-  FileText,
-  Menu,
-  Search,
-  Sparkles,
-  TrendingUp,
-  Users,
-  Wrench,
-  X,
-  Zap,
-} from "lucide-react";
+  DOMAIN_SLOT_FOOTNOTE,
+  PRICING_PLANS,
+  PRICING_TRIAL_FOOTNOTE,
+} from "@/lib/pricing-plans";
+import "./homepage.css";
 
 const features = [
   {
-    icon: Sparkles,
-    title: "The Fix Engine",
+    icon: "🤖",
+    title: "Fix Engine",
+    badge: "Moat",
     description:
-      "AI-generated remediation: pitch emails, content briefs, action plans, success metrics. The only AEO platform that writes the fix, not just the diagnosis.",
-    highlighted: true,
+      "AI writes the actual remediation — pitch emails, content briefs, action plans, success metrics. No competitor does this.",
   },
   {
-    icon: BarChart3,
+    icon: "🔍",
     title: "4-Platform Audit",
-    description: "ChatGPT, Perplexity, Claude, Gemini, analysed simultaneously.",
+    description:
+      "ChatGPT, Perplexity, Claude, and Gemini analysed simultaneously. See all four verdicts in one run.",
   },
   {
-    icon: Eye,
+    icon: "📡",
     title: "Citation Intelligence",
-    description: "Track where AI cites you vs. competitors.",
+    description:
+      "Track where AI cites you vs. competitors. Surface which sources drive your authority and which you're missing.",
   },
   {
-    icon: TrendingUp,
+    icon: "👁",
     title: "Zero-Click Metrics",
-    description: "Share of Voice, mention rate, citation density.",
+    description:
+      "Share of Voice, brand mention rate, citation density — the metrics that matter when 68% of searches never click through.",
   },
   {
-    icon: Bot,
+    icon: "🤖",
     title: "Agent Readiness Score",
-    description: "Grade your content for how well AI understands it.",
+    description:
+      "Grade how well AI can parse and use your content. Fix the structural gaps that make AI skip you.",
   },
   {
-    icon: Calendar,
+    icon: "🗓",
     title: "90-Day Action Plan",
-    description: "Drag-and-drop roadmap with team assignment.",
+    description:
+      "Drag-and-drop roadmap built from your gaps. Assign owners, set weeks, export to PDF for leadership.",
   },
   {
-    icon: FileText,
-    title: "Executive Summary PDF",
-    description: "Leadership-ready, one page, one click.",
+    icon: "📊",
+    title: "Monthly Check-In",
+    description:
+      "Track Share of Voice against prior audits. Prove the ROI of your AEO work month over month.",
   },
   {
-    icon: CheckCircle,
-    title: "Monthly Check-in",
-    description: "Watch Share of Voice climb over time.",
+    icon: "⚡",
+    title: "Autonomous Agent Audit",
+    description:
+      "Real HTTP crawl on Railway. Async job with full gap output — runs in the background while you work.",
   },
   {
-    icon: Users,
-    title: "Team Collaboration",
-    description: "Up to 10 members, role-based access.",
+    icon: "🔗",
+    title: "Entity Trust Scoring",
+    description:
+      "Knowledge Graph clarity score. Strengthen the entity signals that make AI confidently cite your brand.",
   },
 ];
 
 type ComparisonCell = boolean | "partial";
 
-const comparison: { feature: string; moat?: boolean; aiSearchRank: ComparisonCell; monitoringTools: ComparisonCell; semrush: ComparisonCell }[] = [
-  { feature: "4-platform simultaneous audit", aiSearchRank: true, monitoringTools: false, semrush: false },
-  { feature: "AI-generated fixes", moat: true, aiSearchRank: true, monitoringTools: false, semrush: false },
-  { feature: "Automated 90-day action plan", moat: true, aiSearchRank: true, monitoringTools: false, semrush: false },
-  { feature: "Agent Readiness Score", aiSearchRank: true, monitoringTools: false, semrush: false },
-  { feature: "Zero-click metrics dashboard", aiSearchRank: true, monitoringTools: false, semrush: false },
-  { feature: "Citation intelligence", aiSearchRank: true, monitoringTools: true, semrush: false },
-  { feature: "Executive summary PDF", aiSearchRank: true, monitoringTools: false, semrush: "partial" },
-  { feature: "Traditional rank tracking", aiSearchRank: false, monitoringTools: false, semrush: true },
+const comparison: {
+  feature: string;
+  moat?: boolean;
+  aiSearchRank: ComparisonCell;
+  monitoringTools: ComparisonCell;
+  semrush: ComparisonCell;
+}[] = [
+  {
+    feature: "4-platform simultaneous audit",
+    aiSearchRank: true,
+    monitoringTools: false,
+    semrush: false,
+  },
+  {
+    feature: "AI-generated fixes",
+    moat: true,
+    aiSearchRank: true,
+    monitoringTools: false,
+    semrush: false,
+  },
+  {
+    feature: "Automated 90-day action plan",
+    moat: true,
+    aiSearchRank: true,
+    monitoringTools: false,
+    semrush: false,
+  },
+  {
+    feature: "Agent Readiness Score",
+    aiSearchRank: true,
+    monitoringTools: false,
+    semrush: false,
+  },
+  {
+    feature: "Zero-click metrics dashboard",
+    aiSearchRank: true,
+    monitoringTools: false,
+    semrush: false,
+  },
+  {
+    feature: "Citation intelligence",
+    aiSearchRank: true,
+    monitoringTools: true,
+    semrush: false,
+  },
+  {
+    feature: "Agency white-label + portals",
+    aiSearchRank: true,
+    monitoringTools: false,
+    semrush: false,
+  },
+  {
+    feature: "Executive summary PDF",
+    aiSearchRank: true,
+    monitoringTools: false,
+    semrush: "partial",
+  },
+  {
+    feature: "Traditional rank tracking",
+    aiSearchRank: false,
+    monitoringTools: false,
+    semrush: true,
+  },
+];
+
+const signalPlatforms = [
+  { name: "ChatGPT", width: "12%", color: "#FF6B5E", verdict: "Not cited", className: "v-missing" },
+  { name: "Perplexity", width: "34%", color: "#FFB454", verdict: "Mentioned", className: "v-partial" },
+  { name: "Claude", width: "8%", color: "#FF6B5E", verdict: "Not cited", className: "v-missing" },
+  { name: "Gemini", width: "61%", color: "#3FD18B", verdict: "✓ Cited", className: "v-cited" },
 ];
 
 function ComparisonCellValue({ value }: { value: ComparisonCell }) {
   if (value === true) {
-    return <Check className="mx-auto h-5 w-5 text-green-500" />;
+    return <span className="ck">✓</span>;
   }
   if (value === "partial") {
-    return <span className="text-sm text-gray-500">partial</span>;
+    return <span className="partial">partial</span>;
   }
-  return <span className="text-red-400">—</span>;
+  return <span className="cx">—</span>;
 }
 
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+
+    const revealEls = root.querySelectorAll(".reveal");
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("in");
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.1 },
+    );
+
+    revealEls.forEach((el) => observer.observe(el));
+
+    const timer = window.setTimeout(() => {
+      root.querySelectorAll<HTMLElement>(".sig-bar-fill").forEach((bar) => {
+        const targetWidth = bar.dataset.width ?? bar.style.width;
+        bar.style.width = "0";
+        window.setTimeout(() => {
+          bar.style.width = targetWidth;
+        }, 100);
+      });
+    }, 400);
+
+    return () => {
+      observer.disconnect();
+      window.clearTimeout(timer);
+    };
+  }, []);
+
+  const closeMobileMenu = () => setMobileMenuOpen(false);
 
   return (
-    <div className="min-h-screen bg-white text-gray-900">
-      <nav className="fixed left-0 right-0 top-0 z-50 border-b bg-white/80 backdrop-blur-md">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between">
-            <div className="flex items-center">
-              <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-xl font-bold text-transparent">
-                AI Search Rank
-              </span>
-            </div>
+    <div ref={rootRef} className="homepage">
+      <div className="amb" aria-hidden />
 
-            <div className="hidden items-center space-x-6 md:flex">
-              <Link href="#features" className="text-gray-600 hover:text-gray-900">
-                Features
-              </Link>
-              <Link href="/pricing" className="text-gray-600 hover:text-gray-900">
-                Pricing
-              </Link>
-              <Link href="#comparison" className="text-gray-600 hover:text-gray-900">
-                Comparison
-              </Link>
-              <Link
-                href="/audit"
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
-              >
-                Run Free Audit
-              </Link>
-              <UserMenu />
-            </div>
-
+      <nav>
+        <div className="wrap nav-inner">
+          <Link href="/" className="nav-brand">
+            AI Search Rank
+          </Link>
+          <div className="nav-links">
+            <Link href="#features">Features</Link>
+            <Link href="#how">How it works</Link>
+            <Link href="#agency">For agencies</Link>
+            <Link href="#comparison">Comparison</Link>
+            <Link href="#pricing">Pricing</Link>
+            <Link href="/pricing">Full pricing</Link>
+          </div>
+          <div className="nav-actions">
+            <UserMenu />
             <button
               type="button"
-              className="md:hidden"
+              className="nav-mobile-btn"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
             >
               {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </button>
           </div>
+          <Link href="/audit" className="nav-cta nav-cta-desktop">
+            Run Free Audit →
+          </Link>
         </div>
-
-        {mobileMenuOpen && (
-          <div className="border-b bg-white md:hidden">
-            <div className="space-y-1 px-4 py-2">
-              <Link href="#features" className="block py-2 text-gray-600">
-                Features
-              </Link>
-              <Link href="/pricing" className="block py-2 text-gray-600">
-                Pricing
-              </Link>
-              <Link href="#comparison" className="block py-2 text-gray-600">
-                Comparison
-              </Link>
-              <Link
-                href="/audit"
-                className="block rounded-lg bg-blue-600 py-2 text-center text-white"
-              >
-                Run Free Audit
-              </Link>
-              <div className="py-2">
-                <UserMenu />
-              </div>
-            </div>
-          </div>
-        )}
+        <div className={`nav-mobile-menu ${mobileMenuOpen ? "open" : ""}`}>
+          <Link href="#features" onClick={closeMobileMenu}>
+            Features
+          </Link>
+          <Link href="#how" onClick={closeMobileMenu}>
+            How it works
+          </Link>
+          <Link href="#agency" onClick={closeMobileMenu}>
+            For agencies
+          </Link>
+          <Link href="#comparison" onClick={closeMobileMenu}>
+            Comparison
+          </Link>
+          <Link href="#pricing" onClick={closeMobileMenu}>
+            Pricing
+          </Link>
+          <Link href="/pricing" onClick={closeMobileMenu}>
+            Full pricing
+          </Link>
+          <Link href="/audit" className="nav-cta" onClick={closeMobileMenu}>
+            Run Free Audit →
+          </Link>
+        </div>
       </nav>
 
-      <section className="px-4 pb-20 pt-32">
-        <div className="container mx-auto text-center">
-          <div className="mb-6 inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700">
-            <Zap className="mr-1 h-4 w-4" />
-            The AI Search Operating System
-          </div>
-          <h1 className="mx-auto max-w-4xl text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl lg:text-6xl">
-            Every other tool tells you you&apos;re invisible to AI.{" "}
-            <span className="text-blue-600">We make you impossible to ignore.</span>
+      <section className="hero">
+        <div className="wrap">
+          <div className="eyebrow reveal">AI Search Operating System</div>
+          <h1 className="reveal">
+            Every other tool tells you you&apos;re invisible.
+            <br />
+            We make you <span className="fix">impossible to ignore.</span>
           </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-xl text-gray-600">
-            Audit your brand across ChatGPT, Perplexity, Claude, and Gemini. See exactly where
-            competitors are beating you — then let AI Search Rank write the fixes and build your
-            roadmap. Find and fix, in one place.
+          <p className="hero-sub reveal">
+            Audit your brand across ChatGPT, Perplexity, Claude, and Gemini. Get the gaps ranked.
+            Get the fixes written. Get cited.
           </p>
-          <div className="mt-10 flex flex-col justify-center gap-4 sm:flex-row">
-            <Link
-              href="/audit"
-              className="rounded-lg bg-blue-600 px-8 py-3 text-lg font-medium text-white transition hover:bg-blue-700"
-            >
+          <div className="hero-ctas reveal">
+            <Link href="/audit" className="btn-primary">
               Run Your Free Audit →
             </Link>
-            <Link
-              href="/sample-audit"
-              className="inline-flex items-center justify-center rounded-lg bg-gray-100 px-8 py-3 text-lg font-medium text-gray-700 transition hover:bg-gray-200"
-            >
-              <Search className="mr-2 h-5 w-5" />
+            <Link href="/sample-audit" className="btn-ghost">
               See a Sample Audit
             </Link>
           </div>
-          <p className="mt-4 text-sm text-gray-500">
-            Free audit • No credit card • Results in minutes
-          </p>
-        </div>
-      </section>
+          <p className="hero-fine reveal">Free · No credit card · 4 platforms scanned</p>
 
-      <section className="bg-gray-50 px-4 py-20">
-        <div className="container mx-auto">
-          <div className="mx-auto max-w-3xl text-center">
-            <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl">
-              You&apos;re losing customers inside answers you&apos;ll never see.
-            </h2>
-            <p className="mt-4 text-xl text-gray-600">
-              68% of searches now end without a click — the answer happens on the screen, and the
-              user never reaches your site. When someone asks AI for &ldquo;the best [what you
-              do],&rdquo; it names three companies. If you&apos;re not one of them, you don&apos;t
-              lose a ranking. You lose the customer — and you never even knew the conversation
-              happened.
-            </p>
-          </div>
-          <div className="mx-auto mt-12 grid max-w-4xl grid-cols-1 gap-8 md:grid-cols-3">
-            <div className="p-6 text-center">
-              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
-                <Eye className="h-6 w-6 text-red-600" />
-              </div>
-              <h3 className="text-lg font-semibold">You can&apos;t see it</h3>
-              <p className="mt-2 text-gray-600">
-                AI cites your competitors in answers you never witness. You&apos;re flying blind in
-                the channel that&apos;s replacing search.
-              </p>
+          <div className="signal-wrap reveal">
+            <div className="signal-label">
+              Live audit signal — &ldquo;best project management for remote teams&rdquo;
             </div>
-            <div className="p-6 text-center">
-              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-yellow-100">
-                <FileText className="h-6 w-6 text-yellow-600" />
+            <div className="signal-bar">
+              <div className="signal-query">
+                Query: <b>&ldquo;What&apos;s the best project management software for remote teams?&rdquo;</b>
+                &nbsp;·&nbsp; Brand: YourBrand.com &nbsp;·&nbsp; 3 competitors added
               </div>
-              <h3 className="text-lg font-semibold">Checking by hand is hopeless</h3>
-              <p className="mt-2 text-gray-600">
-                Manually asking ChatGPT, Perplexity, Claude, and Gemini the same questions, tracking
-                who gets named — that&apos;s hours a week, and it&apos;s stale the moment you finish.
-              </p>
-            </div>
-            <div className="p-6 text-center">
-              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-purple-100">
-                <AlertTriangle className="h-6 w-6 text-purple-600" />
-              </div>
-              <h3 className="text-lg font-semibold">Finding gaps isn&apos;t fixing them</h3>
-              <p className="mt-2 text-gray-600">
-                Other tools hand you a problem list and walk away. A dashboard full of red
-                doesn&apos;t move your visibility an inch.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="px-4 py-20">
-        <div className="container mx-auto">
-          <div className="mx-auto mb-12 max-w-3xl text-center">
-            <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl">
-              Monitoring tools find the gap. We close it.
-            </h2>
-            <p className="mt-4 text-xl text-gray-600">
-              Every other AI-visibility tool is a smoke detector — it tells you there&apos;s a fire.
-              AI Search Rank brings the water.
-            </p>
-            <p className="mt-4 text-lg text-gray-600">
-              Run an audit and you don&apos;t just get a score. You get the exact gaps ranked by
-              what&apos;s costing you most, AI-written fixes for each one — pitch emails, content
-              briefs, action steps — and a 90-day roadmap built automatically. One click moves a fix
-              from &ldquo;found&rdquo; to &ldquo;in progress.&rdquo;
-            </p>
-            <p className="mt-4 font-semibold text-gray-900">
-              That&apos;s the difference between knowing you&apos;re invisible and doing something
-              about it.
-            </p>
-          </div>
-          <div className="mx-auto grid max-w-4xl grid-cols-1 gap-6 md:grid-cols-3">
-            {[
-              {
-                step: "1",
-                title: "Audit",
-                desc: "Four AI platforms, one scan. See where you stand and where competitors win.",
-              },
-              {
-                step: "2",
-                title: "Fix",
-                desc: "AI writes the remediation: emails, briefs, metrics. Not a to-do list — actual work, done.",
-              },
-              {
-                step: "3",
-                title: "Track",
-                desc: "Watch your Share of Voice climb. Prove the ROI to leadership with one PDF.",
-              },
-            ].map((item) => (
-              <div
-                key={item.step}
-                className="rounded-xl border bg-white p-6 shadow-sm"
-              >
-                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-lg font-bold text-white">
-                  {item.step}
+              {signalPlatforms.map((platform) => (
+                <div key={platform.name} className="signal-row">
+                  <span className="sig-platform">{platform.name}</span>
+                  <div className="sig-bar-track">
+                    <div
+                      className="sig-bar-fill"
+                      data-width={platform.width}
+                      style={{ width: platform.width, background: platform.color }}
+                    />
+                  </div>
+                  <span className={`sig-verdict ${platform.className}`}>{platform.verdict}</span>
                 </div>
-                <h3 className="text-lg font-semibold">{item.title}</h3>
-                <p className="mt-2 text-gray-600">{item.desc}</p>
+              ))}
+              <div className="signal-footer">
+                <span className="sig-sov">
+                  Share of Voice: <b>14%</b> &nbsp;·&nbsp; 9 gaps detected &nbsp;·&nbsp; Competitor
+                  leads: 47%
+                </span>
+                <span className="sig-action">
+                  <span className="sig-dot" />
+                  Generating fixes…
+                </span>
               </div>
-            ))}
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="bg-gray-50 px-4 py-20">
-        <div className="container mx-auto">
-          <div className="mx-auto mb-12 max-w-3xl text-center">
-            <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl">
-              From invisible to cited in four steps
-            </h2>
+      <div className="stats">
+        <div className="wrap">
+          <div className="stats-inner">
+            <div className="stat reveal">
+              <div className="stat-num">68%</div>
+              <div className="stat-lab">Searches end without a click</div>
+            </div>
+            <div className="stat reveal">
+              <div className="stat-num">4</div>
+              <div className="stat-lab">AI platforms audited at once</div>
+            </div>
+            <div className="stat reveal">
+              <div className="stat-num">90</div>
+              <div className="stat-lab">Day action plan auto-built</div>
+            </div>
+            <div className="stat reveal">
+              <div className="stat-num">$1</div>
+              <div className="stat-lab">To start your 14-day trial</div>
+            </div>
           </div>
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
+        </div>
+      </div>
+
+      <section className="problem sec-pad">
+        <div className="wrap">
+          <div className="sec-head reveal">
+            <div className="sec-eyebrow">The problem</div>
+            <h2 className="sec-h">Your brand is losing in conversations you can&apos;t see</h2>
+            <p className="sec-sub">
+              When someone asks AI for &ldquo;the best [what you do],&rdquo; three brands get named.
+              If you&apos;re not one of them, you don&apos;t lose a ranking — you lose the customer
+              entirely.
+            </p>
+          </div>
+          <div className="prob-grid">
+            <div className="prob-card reveal">
+              <div className="prob-icon">🔭</div>
+              <h3>You can&apos;t see where AI ranks you</h3>
+              <p>
+                AI citations happen inside answers you never witness. ChatGPT, Perplexity, Claude,
+                and Gemini are naming your competitors right now — and you have no data on it.
+              </p>
+            </div>
+            <div className="prob-card reveal">
+              <div className="prob-icon">⏱</div>
+              <h3>Manual checking takes hours</h3>
+              <p>
+                Asking four AI platforms the same questions, tracking who gets cited, building a
+                spreadsheet — that&apos;s hours a week and it&apos;s already stale the moment you
+                finish.
+              </p>
+            </div>
+            <div className="prob-card reveal">
+              <div className="prob-icon">📋</div>
+              <h3>Other tools give you gaps, not fixes</h3>
+              <p>
+                Every monitoring tool hands you a problem list and walks away. A dashboard full of
+                red doesn&apos;t move your AI visibility an inch. You need the work done, not
+                described.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="sec-pad" id="how">
+        <div className="wrap">
+          <div className="sec-head reveal">
+            <div className="sec-eyebrow">How it works</div>
+            <h2 className="sec-h">From invisible to cited in one afternoon</h2>
+            <p className="sec-sub">The full execution loop — not a PDF and goodbye.</p>
+          </div>
+          <div className="steps">
             {[
               {
-                step: "01",
+                n: "1",
+                icon: "🔍",
                 title: "Run Audit",
-                desc: "Enter your brand, add competitors, hit run. Four AI platforms analysed at once.",
+                desc: "Enter your brand, add competitors. Four AI platforms analysed simultaneously — Discoverability, Clarity, Authority, Trust.",
               },
               {
-                step: "02",
+                n: "2",
+                icon: "📊",
                 title: "Review Gaps",
-                desc: "See exactly where competitors are winning, ranked by severity — so you fix what matters first.",
+                desc: "See exactly where competitors win, ranked by what's costing you the most Share of Voice. Priority order built in.",
               },
               {
-                step: "03",
+                n: "3",
+                icon: "✍️",
                 title: "Generate Fixes",
-                desc: "AI writes the pitch emails, content briefs, action plans, and success metrics. The work, written for you.",
+                desc: "AI writes the pitch emails, content briefs, action steps, and success metrics. The work, written for you. Approve before anything goes live.",
               },
               {
-                step: "04",
-                title: "Build Your Plan",
-                desc: "One click drops every fix into your 90-day roadmap. Assign, track, ship.",
+                n: "4",
+                icon: "🗓",
+                title: "Ship the Plan",
+                desc: "One click builds your 90-day roadmap. Assign owners, set timelines, track progress. Export to PDF for leadership.",
               },
-            ].map((item) => (
-              <div key={item.step} className="text-center">
-                <div className="mb-2 text-5xl font-bold text-blue-600 opacity-20">{item.step}</div>
-                <h3 className="mt-2 text-xl font-semibold">{item.title}</h3>
-                <p className="mt-2 text-gray-600">{item.desc}</p>
+            ].map((step) => (
+              <div key={step.n} className="step reveal">
+                <div className="step-icon">
+                  {step.icon}
+                  <span className="step-n">{step.n}</span>
+                </div>
+                <h3>{step.title}</h3>
+                <p>{step.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="moat-split reveal" style={{ marginTop: 72 }}>
+            <div className="moat-card moat-them">
+              <div className="moat-tag them">Monitoring tools</div>
+              <div className="moat-score">57/100</div>
+              <p>Here&apos;s your AI visibility score. Here&apos;s a list of what&apos;s wrong. Good luck.</p>
+              <div className="moat-items">
+                <div className="moat-item">
+                  <span className="mi-icon">📉</span> Discoverability: 41/100
+                </div>
+                <div className="moat-item">
+                  <span className="mi-icon">⚠️</span> 9 gaps detected
+                </div>
+                <div className="moat-item">
+                  <span className="mi-icon">📋</span> Download your report
+                </div>
+              </div>
+            </div>
+            <div className="moat-card moat-us">
+              <div className="moat-tag us">AI Search Rank</div>
+              <div className="moat-score">57/100</div>
+              <p>Same score. Here&apos;s what&apos;s causing it — and here are nine fixes, already written.</p>
+              <div className="moat-items">
+                <div className="moat-item">
+                  <span className="mi-icon">✍️</span> Fix 1: Comparison page brief — drafted
+                </div>
+                <div className="moat-item">
+                  <span className="mi-icon">📧</span> Fix 2: 5 authority pitch emails — drafted
+                </div>
+                <div className="moat-item">
+                  <span className="mi-icon">🗓</span> 90-day plan — built, assigned, ready
+                </div>
+                <div className="moat-item">
+                  <span className="mi-icon">✅</span> Awaiting your approval to go live
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="features-bg sec-pad" id="features">
+        <div className="wrap">
+          <div className="sec-head reveal">
+            <div className="sec-eyebrow">Platform</div>
+            <h2 className="sec-h">Everything in one place</h2>
+            <p className="sec-sub">
+              The intelligence layer, the fix engine, and the execution tools — not three separate
+              subscriptions.
+            </p>
+          </div>
+          <div className="feat-grid">
+            {features.map((feature) => (
+              <div key={feature.title} className="feat reveal">
+                <div className="feat-icon">{feature.icon}</div>
+                <h3>
+                  {feature.title}
+                  {feature.badge ? <span className="feat-badge">{feature.badge}</span> : null}
+                </h3>
+                <p>{feature.description}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <section id="features" className="px-4 py-20">
-        <div className="container mx-auto">
-          <div className="mx-auto mb-12 max-w-3xl text-center">
-            <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl">
-              One platform. Find it, fix it, prove it.
-            </h2>
-          </div>
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {features.map((feature) => (
-              <div
-                key={feature.title}
-                className={`rounded-xl border bg-white p-6 shadow-sm transition hover:shadow-md ${
-                  feature.highlighted
-                    ? "border-blue-500 ring-2 ring-blue-200 md:col-span-2 lg:col-span-3"
-                    : ""
-                }`}
-              >
-                <div className={feature.highlighted ? "flex flex-col gap-4 md:flex-row md:items-start" : ""}>
-                  <feature.icon
-                    className={`shrink-0 text-blue-600 ${
-                      feature.highlighted ? "h-12 w-12" : "mb-4 h-10 w-10"
-                    }`}
-                  />
-                  <div>
-                    <h3 className={`font-semibold ${feature.highlighted ? "text-xl" : "text-lg"}`}>
-                      {feature.highlighted && (
-                        <Wrench className="mr-1 inline h-5 w-5 text-blue-600" />
-                      )}
-                      {feature.title}
-                    </h3>
-                    <p className={`text-gray-600 ${feature.highlighted ? "mt-2 text-base" : "mt-2"}`}>
-                      {feature.description}
-                    </p>
+      <section className="sec-pad" id="agency">
+        <div className="wrap">
+          <div className="agency-layout">
+            <div className="agency-copy reveal">
+              <div className="sec-eyebrow">For agencies</div>
+              <h2 className="sec-h">Sell outcomes, not spreadsheets</h2>
+              <p>
+                One workspace per client. Your logo on every report. Clients see progress inside a
+                branded portal — not your internal tool.
+              </p>
+              <div className="agency-list">
+                <div className="ag-item">Isolated client workspaces — no data bleed between accounts</div>
+                <div className="ag-item">White-label reports and client portals under your brand</div>
+                <div className="ag-item">Team roles (Owner, Admin, Team) with granular access</div>
+                <div className="ag-item">Up to 25 client domains on Agency tier</div>
+                <div className="ag-item">REST API v1 — keys, webhooks, OAuth for custom integrations</div>
+                <div className="ag-item">Cross-client intelligence network and predictive ROI views</div>
+              </div>
+              <Link href="#pricing" className="btn-primary">
+                See Agency Pricing →
+              </Link>
+            </div>
+            <div className="agency-dash reveal">
+              <div className="dash-topbar">
+                <div className="dash-dots">
+                  <div className="dash-dot" />
+                  <div className="dash-dot" />
+                  <div className="dash-dot" />
+                </div>
+                <div className="dash-url">aisearchrank.ai / agency</div>
+              </div>
+              <div className="dash-body">
+                <div
+                  style={{
+                    fontFamily: "var(--mono)",
+                    fontSize: 10,
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    color: "var(--mute)",
+                    marginBottom: 14,
+                  }}
+                >
+                  Client workspaces
+                </div>
+                <div className="dash-clients">
+                  <div className="dash-client">
+                    <div>
+                      <div className="dc-name">Acme Corp</div>
+                      <div className="dc-domain">acmecorp.com</div>
+                    </div>
+                    <div className="dc-score good">82</div>
+                    <div className="dc-badge active">Active</div>
+                  </div>
+                  <div className="dash-client">
+                    <div>
+                      <div className="dc-name">Blue Ridge SaaS</div>
+                      <div className="dc-domain">blueridge.io</div>
+                    </div>
+                    <div className="dc-score mid">61</div>
+                    <div className="dc-badge needs">3 gaps</div>
+                  </div>
+                  <div className="dash-client">
+                    <div>
+                      <div className="dc-name">Northfield Legal</div>
+                      <div className="dc-domain">northfieldlaw.com</div>
+                    </div>
+                    <div className="dc-score bad">39</div>
+                    <div className="dc-badge needs">9 gaps</div>
+                  </div>
+                  <div className="dash-client" style={{ opacity: 0.45, borderStyle: "dashed" }}>
+                    <div>
+                      <div className="dc-name" style={{ color: "var(--mute)" }}>
+                        + Add client
+                      </div>
+                    </div>
+                    <div />
+                    <div />
                   </div>
                 </div>
               </div>
-            ))}
+            </div>
           </div>
         </div>
       </section>
 
-      <section id="comparison" className="bg-gray-50 px-4 py-20">
-        <div className="container mx-auto">
-          <div className="mx-auto mb-12 max-w-3xl text-center">
-            <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl">
+      <section className="features-bg sec-pad" id="comparison">
+        <div className="wrap">
+          <div className="sec-head reveal">
+            <div className="sec-eyebrow">Comparison</div>
+            <h2 className="sec-h">Monitoring tools find the gap. We close it.</h2>
+            <p className="sec-sub">
               Traditional SEO measures clicks. We measure influence — and act on it.
-            </h2>
+            </p>
           </div>
-          <div className="overflow-x-auto">
-            <table className="mx-auto w-full max-w-4xl border-collapse">
+          <div className="comp-wrap reveal">
+            <table className="comp-table">
               <thead>
-                <tr className="border-b">
-                  <th className="px-4 py-4 text-left font-semibold">Capability</th>
-                  <th className="px-4 py-4 text-center font-semibold text-blue-600">
-                    AI Search Rank
-                  </th>
-                  <th className="px-4 py-4 text-center font-semibold">Monitoring Tools</th>
-                  <th className="px-4 py-4 text-center font-semibold">Semrush</th>
+                <tr>
+                  <th>Capability</th>
+                  <th className="us">AI Search Rank</th>
+                  <th>Monitoring Tools</th>
+                  <th>Semrush</th>
                 </tr>
               </thead>
               <tbody>
                 {comparison.map((row) => (
-                  <tr key={row.feature} className="border-b">
-                    <td className={`px-4 py-3 ${row.moat ? "font-semibold" : ""}`}>
-                      {row.feature}
-                    </td>
-                    <td className="px-4 py-3 text-center">
+                  <tr key={row.feature}>
+                    <td className={row.moat ? "moat" : undefined}>{row.feature}</td>
+                    <td className="us">
                       <ComparisonCellValue value={row.aiSearchRank} />
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td>
                       <ComparisonCellValue value={row.monitoringTools} />
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td>
                       <ComparisonCellValue value={row.semrush} />
                     </td>
                   </tr>
@@ -425,204 +607,141 @@ export default function LandingPage() {
               </tbody>
             </table>
           </div>
-          <div className="mt-8 text-center">
-            <p className="text-gray-600">
-              Different engine. Different metrics. Different outcome — you don&apos;t just learn
-              you&apos;re losing. You stop losing.
+          <p className="comp-caption reveal">
+            Different engine. Different metrics. Different outcome — you don&apos;t just learn
+            you&apos;re losing. You stop losing.
+          </p>
+        </div>
+      </section>
+
+      <section className="pricing-bg sec-pad" id="pricing">
+        <div className="wrap">
+          <div className="sec-head reveal">
+            <div className="sec-eyebrow">Pricing</div>
+            <h2 className="sec-h">Start free. Scale to 25 client brands.</h2>
+            <p className="sec-sub">
+              Every paid plan starts with a $1 trial for 14 days. No credit card to start free.
             </p>
           </div>
-        </div>
-      </section>
+          <div className="price-grid">
+            <div className="price-card reveal">
+              <div className="price-name">Free</div>
+              <div className="price-amount">
+                <span className="free-num">$0</span>
+              </div>
+              <div className="price-desc">
+                Run one audit. See what AI sees. No signup required at /free-audit.
+              </div>
+              <div className="price-features">
+                <div className="pf">1 free audit</div>
+                <div className="pf">All 4 platforms scanned</div>
+                <div className="pf">Browser-only save</div>
+              </div>
+              <Link href="/free-audit" className="price-cta ghost">
+                Run Free Audit
+              </Link>
+            </div>
 
-      <section className="px-4 py-16">
-        <div className="container mx-auto text-center">
-          <h2 className="text-2xl font-bold text-gray-900 sm:text-3xl">
-            Built for the teams who refuse to go invisible.
-          </h2>
-        </div>
-      </section>
-
-      <section id="pricing" className="bg-gray-50 px-4 py-20">
-        <div className="container mx-auto">
-          <div className="mx-auto mb-12 max-w-3xl text-center">
-            <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl">
-              Simple, Transparent Pricing
-            </h2>
-            <p className="mt-4 text-xl text-gray-600">Start free. Scale as you grow.</p>
-          </div>
-          <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 md:grid-cols-2 xl:grid-cols-4">
             {PRICING_PLANS.map((plan) => (
               <div
                 key={plan.name}
-                className={`flex flex-col rounded-xl border bg-white p-6 shadow-sm ${
-                  plan.highlighted
-                    ? "border-blue-500 ring-2 ring-blue-200"
-                    : "border-gray-200"
-                }`}
+                className={`price-card reveal${plan.highlighted ? " featured" : ""}`}
               >
-                {plan.highlighted && (
-                  <div className="mb-2 text-center text-sm font-medium text-blue-600">
-                    MOST POPULAR
-                  </div>
-                )}
-                <h3 className="text-2xl font-bold text-gray-900">{plan.name}</h3>
-                <div className="mt-4">
-                  <span className="text-4xl font-bold">{plan.price}</span>
-                  <span className="text-gray-500">{plan.period}</span>
+                {plan.highlighted ? <div className="price-badge">Most popular</div> : null}
+                <div className="price-name">{plan.name}</div>
+                <div className="price-amount">
+                  {plan.price === "Custom" ? (
+                    <span className="custom-num">{plan.price}</span>
+                  ) : (
+                    <>
+                      <span className="num">{plan.price}</span>
+                      <span className="per">{plan.period}</span>
+                    </>
+                  )}
                 </div>
-                <p className="mt-2 text-sm text-gray-600">{plan.description}</p>
-                <ul className="mt-6 flex-1 space-y-3">
+                <div className="price-desc">{plan.description}</div>
+                <div className="price-features">
                   {plan.features.map((feature) => (
-                    <li key={feature} className="flex items-start gap-2 text-sm">
-                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-green-500" />
-                      <span className="text-gray-600">{feature}</span>
-                    </li>
+                    <div key={feature} className="pf">
+                      {feature}
+                    </div>
                   ))}
-                </ul>
+                </div>
                 <Link
                   href={plan.href}
-                  className={`mt-8 block w-full rounded-lg px-4 py-2 text-center font-medium transition ${
-                    plan.highlighted
-                      ? "bg-blue-600 text-white hover:bg-blue-700"
-                      : "bg-gray-100 text-gray-900 hover:bg-gray-200"
-                  }`}
+                  className={`price-cta${plan.highlighted ? " primary" : " ghost"}`}
                 >
                   {plan.cta}
                 </Link>
+                {plan.price !== "Custom" ? (
+                  <div className="price-trial">14 days for $1</div>
+                ) : null}
               </div>
             ))}
           </div>
-          <div className="mx-auto mt-8 max-w-3xl space-y-3 text-center">
-            <p className="text-sm text-gray-500">
-              All paid plans include a 14-day free trial. No credit card required to run your first
-              audit.
+          <div className="price-footnotes reveal">
+            <p>{PRICING_TRIAL_FOOTNOTE}</p>
+            <p>{DOMAIN_SLOT_FOOTNOTE}</p>
+            <p>
+              <Link href="/pricing">View full pricing details →</Link>
             </p>
-            <p className="text-sm text-gray-500">{DOMAIN_SLOT_FOOTNOTE}</p>
-            <Link href="/pricing" className="text-sm font-medium text-blue-600 hover:text-blue-700">
-              View full pricing details →
-            </Link>
           </div>
         </div>
       </section>
 
-      <section className="bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-20">
-        <div className="container mx-auto text-center">
-          <h2 className="text-3xl font-bold text-white sm:text-4xl">
-            Your competitors are being recommended right now. In answers you can&apos;t see.
+      <section className="final-cta reveal">
+        <div className="wrap-sm">
+          <h2>
+            Your competitors are being cited <em>right now</em> — in answers you can&apos;t see.
           </h2>
-          <p className="mt-4 text-xl text-blue-100">
-            Run a free audit and find out exactly where you&apos;re losing — and walk away with the
-            fixes already written.
+          <p>
+            Run a free audit in 60 seconds. Walk away knowing exactly where you&apos;re losing —
+            and with the fixes already drafted.
           </p>
-          <div className="mt-8 flex flex-col justify-center gap-4 sm:flex-row">
-            <Link
-              href="/audit"
-              className="rounded-lg bg-white px-8 py-3 text-lg font-medium text-blue-600 transition hover:bg-gray-100"
-            >
+          <div className="hero-ctas">
+            <Link href="/audit" className="btn-primary">
               Run Your Free Audit →
             </Link>
-            <Link
-              href="/sample-audit"
-              className="rounded-lg bg-white/20 px-8 py-3 text-lg font-medium text-white transition hover:bg-white/30"
-            >
+            <Link href="/sample-audit" className="btn-ghost">
               See a Sample Audit
             </Link>
           </div>
+          <p className="hero-fine" style={{ marginTop: 16 }}>
+            Free · No credit card · 4 platforms scanned
+          </p>
         </div>
       </section>
 
-      <footer className="bg-gray-900 px-4 py-12 text-gray-400">
-        <div className="container mx-auto">
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-5">
-            <div className="md:col-span-2">
-              <span className="text-xl font-bold text-white">AI Search Rank</span>
-              <p className="mt-2 text-sm">The operating system for AI visibility.</p>
-            </div>
+      <footer>
+        <div className="wrap">
+          <div className="footer-inner">
             <div>
-              <h4 className="mb-3 font-semibold text-white">Product</h4>
-              <ul className="space-y-2 text-sm">
-                <li>
-                  <Link href="#features" className="hover:text-white">
-                    Features
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/pricing" className="hover:text-white">
-                    Pricing
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/audit" className="hover:text-white">
-                    Free Audit
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/sample-audit" className="hover:text-white">
-                    Sample Audit
-                  </Link>
-                </li>
-              </ul>
+              <div className="foot-brand">AI Search Rank</div>
+              <div className="foot-tagline">The AI search platform that fixes what it finds.</div>
             </div>
-            <div>
-              <h4 className="mb-3 font-semibold text-white">Resources</h4>
-              <ul className="space-y-2 text-sm">
-                <li>
-                  <Link href="/help" className="hover:text-white">
-                    Help Center
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/dashboard" className="hover:text-white">
-                    Dashboard
-                  </Link>
-                </li>
-              </ul>
+            <div className="foot-col">
+              <h4>Product</h4>
+              <Link href="#features">Features</Link>
+              <Link href="#pricing">Pricing</Link>
+              <Link href="/audit">Free Audit</Link>
+              <Link href="/free-audit">No-signup Audit</Link>
+              <Link href="/sample-audit">Sample Audit</Link>
             </div>
-            <div>
-              <h4 className="mb-3 font-semibold text-white">Company</h4>
-              <ul className="space-y-2 text-sm">
-                <li>
-                  <Link href="/contact" className="hover:text-white">
-                    Contact
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/terms" className="hover:text-white">
-                    Terms of Service
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/privacy" className="hover:text-white">
-                    Privacy Policy
-                  </Link>
-                </li>
-              </ul>
-              <h4 className="mb-3 mt-6 font-semibold text-white">Contact</h4>
-              <ul className="space-y-2 text-sm">
-                <li>
-                  Support:{" "}
-                  <a href="mailto:support@aisearchrank.ai" className="hover:text-white">
-                    support@aisearchrank.ai
-                  </a>
-                </li>
-                <li>
-                  Legal:{" "}
-                  <a href="mailto:legal@aisearchrank.ai" className="hover:text-white">
-                    legal@aisearchrank.ai
-                  </a>
-                </li>
-                <li>
-                  Privacy:{" "}
-                  <a href="mailto:privacy@aisearchrank.ai" className="hover:text-white">
-                    privacy@aisearchrank.ai
-                  </a>
-                </li>
-              </ul>
+            <div className="foot-col">
+              <h4>Resources</h4>
+              <Link href="/help">Help Centre</Link>
+              <Link href="/dashboard">Dashboard</Link>
+              <Link href="/dashboard/gsc">Search Console</Link>
+            </div>
+            <div className="foot-col">
+              <h4>Company</h4>
+              <Link href="/contact">Contact</Link>
+              <Link href="/terms">Terms of Service</Link>
+              <Link href="/privacy">Privacy Policy</Link>
+              <a href="mailto:support@aisearchrank.ai">support@aisearchrank.ai</a>
             </div>
           </div>
-          <div className="mt-8 border-t border-gray-800 pt-8 text-center text-sm">
-            <p>&copy; 2026 AI Search Rank. All rights reserved.</p>
-          </div>
+          <div className="foot-copy">© 2026 AI Search Rank. Built for the AI search era.</div>
         </div>
       </footer>
     </div>
