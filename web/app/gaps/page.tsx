@@ -1,15 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { GapDashboard } from "@/components/gaps/GapDashboard";
 import { GapsPageSkeleton } from "@/components/gaps/GapsPageSkeleton";
+import { CompetitorHeatmap } from "@/components/CompetitorHeatmap";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useMobile } from "@/hooks/useMobile";
 import { cn } from "@/lib/utils";
+import { buildHeatmapFromAudit } from "@/lib/competitor-heatmap-data";
 import { useAuditStore } from "@/store/auditStore";
 
 export default function GapsPage() {
   const isMobile = useMobile();
   const [loading, setLoading] = useState(true);
+  const auditSlice = useAuditStore((s) => ({
+    auditBrandName: s.auditBrandName,
+    discoverability: s.discoverability,
+    clarity: s.clarity,
+    authority: s.authority,
+    trust: s.trust,
+  }));
+  const heatmapRows = useMemo(() => buildHeatmapFromAudit(auditSlice), [auditSlice]);
 
   useEffect(() => {
     const unsub = useAuditStore.persist.onFinishHydration(() => {
@@ -38,6 +49,20 @@ export default function GapsPage() {
         </p>
       </div>
       {loading ? <GapsPageSkeleton /> : <GapDashboard />}
+
+      {!loading && heatmapRows.length > 1 && (
+        <Card style={{ background: "var(--panel)" }}>
+          <CardHeader>
+            <CardTitle>Competitor heatmap</CardTitle>
+            <CardDescription>
+              AI visibility scores across audit layers — find where to attack competitors
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <CompetitorHeatmap rows={heatmapRows} />
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
