@@ -13,7 +13,9 @@ export async function GET() {
   const access = await requireAgencyAccess({ permission: "manage_clients" });
   if (access instanceof NextResponse) return access;
 
-  const planError = await requireEnterprisePlan(access.agencyId);
+  const planError = await requireEnterprisePlan(access.agencyId, {
+    userRole: access.role,
+  });
   if (planError) return planError;
 
   const clients = await prisma.oAuthClient.findMany({
@@ -45,7 +47,9 @@ export async function POST(request: Request) {
   const access = await requireAgencyAccess({ permission: "manage_clients" });
   if (access instanceof NextResponse) return access;
 
-  const planError = await requireEnterprisePlan(access.agencyId);
+  const planError = await requireEnterprisePlan(access.agencyId, {
+    userRole: access.role,
+  });
   if (planError) return planError;
 
   let body: { name?: string; redirectUris?: string[] };

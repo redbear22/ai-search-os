@@ -16,7 +16,11 @@ export async function POST(_request: Request, context: RouteContext) {
   });
   if (access instanceof NextResponse) return access;
 
-  const featureBlock = await requireAgencyFeature(access.agencyId, "clientPortals");
+  const featureBlock = await requireAgencyFeature(
+    access.agencyId,
+    "clientPortals",
+    access.role
+  );
   if (featureBlock) return featureBlock;
 
   const existing = await prisma.client.findFirst({

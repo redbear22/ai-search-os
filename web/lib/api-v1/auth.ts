@@ -3,6 +3,10 @@ import { NextResponse } from "next/server";
 import { hashSecret } from "@/lib/api-v1/crypto";
 import { apiV1Error } from "@/lib/api-v1/response";
 import { prisma } from "@/lib/prisma";
+import {
+  agencyHasPlatformAdmin,
+  isAdminUnlimitedAccess,
+} from "@/lib/resolve-effective-tier";
 import type { ApiKeyScope, ApiV1AuthContext } from "@/types/api-v1";
 
 const DEFAULT_SCOPES: ApiKeyScope[] = [
@@ -59,8 +63,17 @@ function extractBearerToken(request: NextRequest): string | null {
 }
 
 export async function requireEnterprisePlan(
-  agencyId: string
+  agencyId: string,
+  options?: { userRole?: string | null }
 ): Promise<NextResponse | null> {
+  if (isAdminUnlimitedAccess(options?.userRole)) {
+    return null;
+  }
+
+  if (await agencyHasPlatformAdmin(agencyId)) {
+    return null;
+  }
+
   const subscription = await prisma.subscription.findUnique({
     where: { agencyId },
     select: { plan: true, status: true },

@@ -10,7 +10,9 @@ export async function GET() {
   const access = await requireAgencyAccess({ permission: "manage_clients" });
   if (access instanceof NextResponse) return access;
 
-  const planError = await requireEnterprisePlan(access.agencyId);
+  const planError = await requireEnterprisePlan(access.agencyId, {
+    userRole: access.role,
+  });
   if (planError) return planError;
 
   const keys = await prisma.apiKey.findMany({
@@ -42,7 +44,9 @@ export async function POST(request: NextRequest) {
   const access = await requireAgencyAccess({ permission: "manage_clients" });
   if (access instanceof NextResponse) return access;
 
-  const planError = await requireEnterprisePlan(access.agencyId);
+  const planError = await requireEnterprisePlan(access.agencyId, {
+    userRole: access.role,
+  });
   if (planError) return planError;
 
   let body: { name?: string; scopes?: string[]; expiresAt?: string };

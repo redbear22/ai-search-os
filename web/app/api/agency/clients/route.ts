@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { isAdminUnlimitedAccess } from "@/lib/resolve-effective-tier";
 import { generateClientAccessKey, requireAgencyAccess } from "@/lib/workspace";
 
 const clientSelect = {
@@ -74,7 +75,7 @@ export async function POST(request: Request) {
   });
 
   const limit = subscription?.clientLimit ?? 1;
-  if (clientCount >= limit) {
+  if (!isAdminUnlimitedAccess(access.role) && clientCount >= limit) {
     return NextResponse.json(
       { error: `Client limit reached (${limit})` },
       { status: 403 }

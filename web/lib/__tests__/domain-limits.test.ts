@@ -17,8 +17,9 @@ import { prisma } from "@/lib/prisma";
 const mockedUserFindUnique = vi.mocked(prisma.user.findUnique);
 const mockedDomainFindMany = vi.mocked(prisma.domain.findMany);
 
-function mockAgency(plan: "FREE" | "PRO" | "AGENCY" | "ENTERPRISE" = "FREE") {
+function mockAgency(plan: "FREE" | "PRO" | "AGENCY" | "ENTERPRISE" = "FREE", role: "ADMIN" | "APPROVED" = "APPROVED") {
   mockedUserFindUnique.mockResolvedValue({
+    role,
     agencyId: "agency-1",
     agency: { subscription: { plan } },
     ownedAgencies: [],
@@ -96,5 +97,19 @@ describe("checkDomainLimit", () => {
     expect(result.allowed).toBe(true);
     expect(result.limit).toBe(Infinity);
     expect(result.current).toBe(30);
+  });
+
+  it("allows unlimited domains for platform ADMIN on any plan", async () => {
+    mockAgency("FREE", "ADMIN");
+    const existing = Array.from({ length: 5 }, (_, i) => ({
+      url: `site${i}.com`,
+      treatAsSeparate: false,
+    }));
+    mockedDomainFindMany.mockResolvedValue(existing as never);
+
+    const result = await checkDomainLimit("user-1", "https://newbrand.com");
+
+    expect(result.allowed).toBe(true);
+    expect(result.limit).toBe(Infinity);
   });
 });

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import type { AgencyRole } from "@prisma/client";
 import { INVITABLE_ROLES } from "@/lib/agency-rbac";
 import { prisma } from "@/lib/prisma";
+import { isAdminUnlimitedAccess } from "@/lib/resolve-effective-tier";
 import { requireAgencyAccess } from "@/lib/workspace";
 
 const memberSelect = {
@@ -117,7 +118,7 @@ export async function POST(request: Request) {
   });
 
   const limit = subscription?.teamMemberLimit ?? 1;
-  if (memberCount >= limit) {
+  if (!isAdminUnlimitedAccess(access.role) && memberCount >= limit) {
     return NextResponse.json(
       { error: `Team member limit reached (${limit})` },
       { status: 403 }

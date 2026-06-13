@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { requireScope } from "@/lib/api-v1/auth";
 import { apiV1Error, apiV1Success } from "@/lib/api-v1/response";
 import { withApiV1, parseJsonBody } from "@/lib/api-v1/handler";
+import { shouldBypassSubscriptionLimits } from "@/lib/resolve-effective-tier";
 import { generateClientAccessKey } from "@/lib/workspace";
 import { prisma } from "@/lib/prisma";
 import type { ApiV1AuthContext } from "@/types/api-v1";
@@ -55,7 +56,10 @@ export const POST = withApiV1(async (request: NextRequest, _context, auth: ApiV1
   });
 
   const limit = subscription?.clientLimit ?? 1;
-  if (clientCount >= limit) {
+  const bypassLimits = await shouldBypassSubscriptionLimits({
+    agencyId: auth.agencyId,
+  });
+  if (!bypassLimits && clientCount >= limit) {
     return apiV1Error("forbidden", `Client limit reached (${limit})`, 403);
   }
 

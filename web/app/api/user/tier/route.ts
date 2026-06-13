@@ -1,8 +1,10 @@
 import type { PlanType } from "@prisma/client";
 import { NextResponse } from "next/server";
-import { DOMAIN_LIMITS } from "@/lib/domain-limits";
-import { resolveUserTierFromPlanType } from "@/lib/feature-flags";
 import { prisma } from "@/lib/prisma";
+import {
+  resolveEffectiveDomainLimit,
+  resolveEffectiveTier,
+} from "@/lib/resolve-effective-tier";
 import { getSession } from "@/lib/session";
 
 export async function GET() {
@@ -10,6 +12,8 @@ export async function GET() {
   if (!session?.user?.id) {
     return NextResponse.json({ tier: "free" as const });
   }
+
+  const userRole = session.user.role;
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
@@ -29,8 +33,8 @@ export async function GET() {
     "FREE";
 
   return NextResponse.json({
-    tier: resolveUserTierFromPlanType(plan),
+    tier: resolveEffectiveTier(plan, userRole),
     plan,
-    domainLimit: DOMAIN_LIMITS[plan],
+    domainLimit: resolveEffectiveDomainLimit(plan, userRole),
   });
 }

@@ -1,9 +1,10 @@
-import type { PlanType } from "@prisma/client";
+import type { PlanType, UserRole } from "@prisma/client";
 import {
   getDomainGroupKey,
   normalizeDomain,
   normalizeDomainHost,
 } from "@/lib/domain-normalization";
+import { isAdminUnlimitedAccess } from "@/lib/resolve-effective-tier";
 import { prisma } from "@/lib/prisma";
 
 /** PlanType keys — FREE is the starter tier (1 domain). */
@@ -43,10 +44,11 @@ export function normalizeDomainForStorage(
 
 async function resolveAgencyPlan(
   userId: string
-): Promise<{ agencyId: string; plan: PlanType } | null> {
+): Promise<{ agencyId: string; plan: PlanType; userRole: UserRole } | null> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
+      role: true,
       agencyId: true,
       agency: { select: { subscription: { select: { plan: true } } } },
       ownedAgencies: {
@@ -67,7 +69,7 @@ async function resolveAgencyPlan(
     owned?.subscription?.plan ??
     ("FREE" as PlanType);
 
-  return { agencyId, plan };
+  return { agencyId, plan, userRole: user.role };
 }
 
 function countUniqueSlots(
@@ -107,7 +109,9 @@ export async function checkDomainLimit(
     };
   }
 
-  const limit = DOMAIN_LIMITS[resolved.plan];
+  const limit = isAdminUnlimitedAccess(resolved.userRole)
+    ? DOMAIN_LIMITS.ENTERPRISE
+    : DOMAIN_LIMITS[resolved.plan];
   const newSlot = getDomainSlotKey(normalized, treatAsSeparate);
 
   const existingDomains = await prisma.domain.findMany({

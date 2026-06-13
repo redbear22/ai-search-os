@@ -41,7 +41,11 @@ export async function GET(_request: Request, context: RouteContext) {
   const access = await requireAgencyAccess({ clientId });
   if (access instanceof NextResponse) return access;
 
-  const featureBlock = await requireAgencyFeature(access.agencyId, "clientPortals");
+  const featureBlock = await requireAgencyFeature(
+    access.agencyId,
+    "clientPortals",
+    access.role
+  );
   if (featureBlock) return featureBlock;
 
   const portal = await loadClientPortal(clientId, access.agencyId);
@@ -60,7 +64,11 @@ export async function PUT(request: Request, context: RouteContext) {
   });
   if (access instanceof NextResponse) return access;
 
-  const featureBlock = await requireAgencyFeature(access.agencyId, "clientPortals");
+  const featureBlock = await requireAgencyFeature(
+    access.agencyId,
+    "clientPortals",
+    access.role
+  );
   if (featureBlock) return featureBlock;
 
   let body: { enabled?: boolean };

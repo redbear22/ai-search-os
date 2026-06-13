@@ -11,7 +11,9 @@ export async function DELETE(_request: Request, context: RouteContext) {
   const access = await requireAgencyAccess({ permission: "manage_clients" });
   if (access instanceof NextResponse) return access;
 
-  const planError = await requireEnterprisePlan(access.agencyId);
+  const planError = await requireEnterprisePlan(access.agencyId, {
+    userRole: access.role,
+  });
   if (planError) return planError;
 
   const existing = await prisma.apiKey.findFirst({
