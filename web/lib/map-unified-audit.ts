@@ -95,7 +95,7 @@ export function mapUnifiedAuditToAuditData(
   const clarityText = result.clarity?.data ?? "";
 
   const clarityPlatforms = {} as AuditData["clarity"]["platforms"];
-  const platforms: AIPlatform[] = ["chatgpt", "perplexity", "claude", "gemini"];
+  const platforms: AIPlatform[] = ["chatgpt", "perplexity", "claude", "gemini", "google_aio"];
   for (const platform of platforms) {
     clarityPlatforms[platform] = {
       responseText: platform === "chatgpt" ? clarityText : "",

@@ -140,6 +140,8 @@ function clarityEndpoint(platform: string): string {
 
   if (platform === "gemini") return "/api/clarity/gemini";
 
+  if (platform === "google_aio") return "/api/clarity/google-aio";
+
   return "/api/clarity/openai";
 
 }
@@ -270,7 +272,7 @@ export function useClarityAI(form?: AuditClarityForm) {
 
   const queryAllPlatforms = async (brandName: string): Promise<PlatformQueryResult[]> => {
 
-    const platforms: AIPlatform[] = ["chatgpt", "perplexity", "claude", "gemini"];
+    const platforms: AIPlatform[] = ["chatgpt", "perplexity", "claude", "gemini", "google_aio"];
 
     const results: PlatformQueryResult[] = [];
 

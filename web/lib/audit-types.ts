@@ -1,4 +1,4 @@
-export type AIPlatform = "chatgpt" | "perplexity" | "claude" | "gemini";
+export type AIPlatform = "chatgpt" | "perplexity" | "claude" | "gemini" | "google_aio";
 
 export type AuditLayerId = "discoverability" | "clarity" | "authority" | "trust";
 

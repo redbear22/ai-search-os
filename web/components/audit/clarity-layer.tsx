@@ -137,6 +137,7 @@ export function ClarityLayer({ clarityAI }: { clarityAI: ClarityAIHandlers }) {
       perplexity: "/api/clarity/perplexity",
       claude: "/api/clarity/claude",
       gemini: "/api/clarity/gemini",
+      google_aio: "/api/clarity/google-aio",
     };
     const w = window as Window & {
       claritySetResponse?: (platform: AIPlatform, text: string) => void;

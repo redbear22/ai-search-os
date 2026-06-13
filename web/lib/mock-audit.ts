@@ -32,7 +32,8 @@ export const PLATFORMS: { id: AIPlatform; label: string }[] = [
   { id: "chatgpt", label: "ChatGPT" },
   { id: "perplexity", label: "Perplexity" },
   { id: "claude", label: "Claude" },
-  { id: "gemini", label: "Google AI" },
+  { id: "gemini", label: "Gemini" },
+  { id: "google_aio", label: "Google AI Overviews" },
 ];
 
 export const EMPTY_AUDIT: AuditData = {
@@ -47,6 +48,7 @@ export const EMPTY_AUDIT: AuditData = {
       perplexity: { ...EMPTY_PLATFORM_CLARITY },
       claude: { ...EMPTY_PLATFORM_CLARITY },
       gemini: { ...EMPTY_PLATFORM_CLARITY },
+      google_aio: { ...EMPTY_PLATFORM_CLARITY },
     },
     comparison: { analyzedAt: null, consensusCorrect: [] },
   },

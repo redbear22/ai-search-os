@@ -5,10 +5,21 @@ export const CLARITY_PLATFORM_LABELS: Record<AIPlatform, string> = {
   chatgpt: "ChatGPT",
   perplexity: "Perplexity",
   claude: "Claude",
-  gemini: "Google AI",
+  gemini: "Gemini",
+  google_aio: "Google AI Overviews",
 };
 
-export const CLARITY_PLATFORMS: AIPlatform[] = ["chatgpt", "perplexity", "claude", "gemini"];
+export const CLARITY_PLATFORM_COLORS: Partial<Record<AIPlatform, string>> = {
+  google_aio: "#34A853",
+};
+
+export const CLARITY_PLATFORMS: AIPlatform[] = [
+  "chatgpt",
+  "perplexity",
+  "claude",
+  "gemini",
+  "google_aio",
+];
 
 function normalizeItem(item: string): string {
   return item.trim().toLowerCase();

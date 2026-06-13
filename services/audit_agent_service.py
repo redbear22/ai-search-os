@@ -79,6 +79,32 @@ def _score_trust(pages: list[dict[str, Any]]) -> int:
     return max(0, min(100, score))
 
 
+def score_google_ai_overviews(
+    query: str,
+    brand: str,
+    overview_html: str = "",
+) -> dict[str, Any]:
+    """Rules-first Google AI Overviews visibility — optional HTML from SERP fetch."""
+    text = overview_html.lower()
+    brand_l = brand.lower().strip()
+    has_overview = bool(text and len(text) > 80)
+    mentioned = bool(brand_l and brand_l in text) if has_overview else False
+    score = 0
+    if has_overview:
+        score = 55
+        if mentioned:
+            score += 35
+        if "http" in text:
+            score += 10
+    return {
+        "platform": "google_ai_overviews",
+        "query": query,
+        "has_overview": has_overview,
+        "brand_mentioned": mentioned,
+        "score": max(0, min(100, score)),
+    }
+
+
 RULES: dict[str, Any] = {
     "discoverability": _score_discoverability,
     "clarity": _score_clarity,
