@@ -174,9 +174,60 @@
   .reveal.in{opacity:1;transform:none}
   @media(prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}
     .live::before{animation:none}}
+  .audit-intro-overlay{
+    position:fixed;inset:0;z-index:9999;background:#000;
+    opacity:1;transition:opacity 1.2s ease;
+  }
+  .audit-intro-overlay.is-fading{opacity:0;pointer-events:none}
+  .audit-intro-overlay.is-hidden{display:none}
+  .audit-intro-overlay iframe{width:100%;height:100%;border:0;display:block}
+  .audit-intro-skip{
+    position:fixed;bottom:24px;right:24px;z-index:10000;
+    font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+    color:rgba(138,148,166,.55);background:rgba(22,27,38,.72);
+    border:1px solid rgba(37,44,59,.85);padding:8px 14px;border-radius:6px;
+    cursor:pointer;opacity:0;pointer-events:none;
+    transition:opacity .45s ease,color .15s,border-color .15s;
+  }
+  .audit-intro-skip.is-visible{opacity:1;pointer-events:auto}
+  .audit-intro-skip:hover{color:var(--paper);border-color:var(--mute)}
+  body.audit-intro-lock{overflow:hidden}
+  .audit-replay-intro{
+    display:block;width:100%;margin:-24px auto 40px;padding:0;
+    font-family:var(--mono);font-size:11px;letter-spacing:.04em;
+    color:var(--line);background:none;border:none;cursor:pointer;
+    transition:color .15s;
+  }
+  .audit-replay-intro:hover{color:var(--mute)}
 </style>
 </head>
 <body>
+<div id="audit-intro-overlay" class="audit-intro-overlay" aria-hidden="false">
+  <iframe id="audit-intro-frame" src="about:blank" title="AI Search Rank — intro" allow="autoplay"></iframe>
+  <button type="button" id="audit-intro-skip" class="audit-intro-skip">Skip intro</button>
+</div>
+<script>
+(function(){
+  var o=document.getElementById('audit-intro-overlay');
+  var f=document.getElementById('audit-intro-frame');
+  var skip=false;
+  try{
+    skip=!!sessionStorage.getItem('sample-audit-intro-seen')||matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }catch(e){}
+  if(skip){
+    try{
+      if(!sessionStorage.getItem('sample-audit-intro-seen')&&matchMedia('(prefers-reduced-motion: reduce)').matches){
+        sessionStorage.setItem('sample-audit-intro-seen','1');
+      }
+    }catch(e){}
+    o.classList.add('is-hidden');
+    o.setAttribute('aria-hidden','true');
+  }else{
+    document.body.classList.add('audit-intro-lock');
+    f.src='/intro/index.html';
+  }
+})();
+</script>
 <div class="beam-bg"></div>
 <div class="content">
 <div class="wrap">
@@ -338,10 +389,89 @@
   </div>
 
   <div class="disc">Sample data shown for demonstration. Your audit uses live AI-platform analysis of your real brand.</div>
+  <button type="button" id="audit-replay-intro" class="audit-replay-intro">↺ Replay intro</button>
 
 </div>
 </div>
 
+<script>
+(function(){
+  const KEY='sample-audit-intro-seen';
+  const DURATION=14500;
+  const FADE=1200;
+  const SKIP_AT=1500;
+  const INTRO_SRC='/intro/index.html';
+  const overlay=document.getElementById('audit-intro-overlay');
+  const frame=document.getElementById('audit-intro-frame');
+  const skipBtn=document.getElementById('audit-intro-skip');
+  const replayBtn=document.getElementById('audit-replay-intro');
+  if(!overlay||!frame)return;
+  let endTimer=null,skipTimer=null,fading=false,active=false;
+  function clearTimers(){
+    if(endTimer){clearTimeout(endTimer);endTimer=null}
+    if(skipTimer){clearTimeout(skipTimer);skipTimer=null}
+  }
+  function hideIframeReplay(){
+    try{
+      const replay=frame.contentDocument&&frame.contentDocument.getElementById('replay');
+      if(replay)replay.style.display='none';
+    }catch(_){}
+  }
+  function finishIntro(markSeen){
+    if(fading||!active)return;
+    fading=true;active=false;clearTimers();
+    if(markSeen)sessionStorage.setItem(KEY,'1');
+    overlay.classList.add('is-fading');
+    document.body.classList.remove('audit-intro-lock');
+    skipBtn.classList.remove('is-visible');
+    setTimeout(function(){
+      overlay.classList.add('is-hidden');
+      overlay.classList.remove('is-fading');
+      overlay.setAttribute('aria-hidden','true');
+      frame.src='about:blank';
+      fading=false;
+    },FADE);
+  }
+  function startIntro(force){
+    if(window.matchMedia('(prefers-reduced-motion: reduce)').matches&&!force){
+      sessionStorage.setItem(KEY,'1');
+      return;
+    }
+    clearTimers();fading=false;active=true;
+    overlay.classList.remove('is-hidden','is-fading');
+    overlay.setAttribute('aria-hidden','false');
+    document.body.classList.add('audit-intro-lock');
+    skipBtn.classList.remove('is-visible');
+    if(force||frame.src.indexOf('/intro/index.html')===-1){
+      frame.src=INTRO_SRC+(force?'?t='+Date.now():'');
+    }
+    endTimer=setTimeout(function(){finishIntro(true)},DURATION);
+    skipTimer=setTimeout(function(){skipBtn.classList.add('is-visible')},SKIP_AT);
+  }
+  frame.addEventListener('load',hideIframeReplay);
+  skipBtn.addEventListener('click',function(){finishIntro(true)});
+  document.addEventListener('keydown',function(e){
+    if(!active||fading)return;
+    if(e.key==='Escape'||e.key===' '||e.key==='Enter'){
+      if(e.key!=='Escape')e.preventDefault();
+      finishIntro(true);
+    }
+  });
+  if(replayBtn){
+    replayBtn.addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+      startIntro(true);
+    });
+  }
+  if(sessionStorage.getItem(KEY)){
+    overlay.classList.add('is-hidden');
+  }else if(!window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+    active=true;
+    endTimer=setTimeout(function(){finishIntro(true)},DURATION);
+    skipTimer=setTimeout(function(){skipBtn.classList.add('is-visible')},SKIP_AT);
+  }
+})();
+</script>
 <script>
   const io = new IntersectionObserver((es)=>{
     es.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target);} });

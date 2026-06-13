@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { ExternalLink, MessageSquare, Youtube, Search } from "lucide-react";
+import { ExternalLink, MessageSquare, Video, Search } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LoadingButton } from "@/components/ui/loading-button";
@@ -191,7 +191,7 @@ export default function AiSourcesPage() {
         <Card style={{ background: "var(--panel)" }}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Youtube className="h-5 w-5 text-red-500" />
+              <Video className="h-5 w-5 text-red-500" />
               YouTube Sources
             </CardTitle>
             <CardDescription>Top videos AI is likely reading</CardDescription>

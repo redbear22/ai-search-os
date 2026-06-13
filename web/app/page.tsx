@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
+import { HeroCanvas } from "@/components/HeroCanvas";
+import { IntroModal } from "@/components/IntroModal";
 import { UserMenu } from "@/components/UserMenu";
 import {
   DOMAIN_SLOT_FOOTNOTE,
@@ -155,6 +157,7 @@ function ComparisonCellValue({ value }: { value: ComparisonCell }) {
 
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [introOpen, setIntroOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -253,6 +256,7 @@ export default function LandingPage() {
       </nav>
 
       <section className="hero">
+        <HeroCanvas />
         <div className="wrap">
           <div className="eyebrow reveal">AI Search Operating System</div>
           <h1 className="reveal">
@@ -272,7 +276,24 @@ export default function LandingPage() {
               See a Sample Audit
             </Link>
           </div>
-          <p className="hero-fine reveal">Free · No credit card · 4 platforms scanned</p>
+          <button
+            type="button"
+            className="intro-trigger reveal"
+            onClick={() => setIntroOpen(true)}
+          >
+            ▶ Watch the 60-second intro
+          </button>
+          <p className="hero-fine reveal">
+            Free · No credit card · 4 platforms scanned ·{" "}
+            <button
+              type="button"
+              className="intro-fine-link"
+              onClick={() => setIntroOpen(true)}
+            >
+              ▶ Watch intro (60s)
+            </button>
+          </p>
+          <IntroModal open={introOpen} onClose={() => setIntroOpen(false)} />
 
           <div className="signal-wrap reveal">
             <div className="signal-label">
