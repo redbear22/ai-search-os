@@ -10,6 +10,7 @@ import {
   FileText,
   Eye,
   Shield,
+  Bug,
   type LucideIcon,
 } from "lucide-react";
 import { HeroSection } from "@/components/dashboard/HeroSection";
@@ -68,6 +69,13 @@ const quickActions: {
     icon: Shield,
     color: "bg-indigo-500",
     description: "Knowledge graph & E-E-A-T signals",
+  },
+  {
+    title: "Crawler Logs",
+    href: "/crawler-logs",
+    icon: Bug,
+    color: "bg-orange-500",
+    description: "AI bot crawl intelligence",
   },
 ];
 

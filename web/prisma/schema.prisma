@@ -8,24 +8,24 @@ datasource db {
 }
 
 model User {
-  id            String           @id @default(uuid())
-  email         String           @unique
+  id            String                   @id @default(uuid())
+  email         String                   @unique
   emailVerified DateTime?
   name          String?
   image         String?
-  role          UserRole         @default(PENDING)
+  role          UserRole                 @default(PENDING)
   agencyId      String?
-  agency        Agency?          @relation("AgencyMembers", fields: [agencyId], references: [id])
+  agency        Agency?                  @relation("AgencyMembers", fields: [agencyId], references: [id])
   clientId      String?
-  client        Client?          @relation("ClientViewers", fields: [clientId], references: [id])
-  agencyRole    AgencyRole       @default(AGENCY_TEAM)
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  client        Client?                  @relation("ClientViewers", fields: [clientId], references: [id])
+  agencyRole    AgencyRole               @default(AGENCY_TEAM)
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
   accounts      Account[]
   sessions      Session[]
-  ownedAgencies Agency[]         @relation("AgencyOwner")
+  ownedAgencies Agency[]                 @relation("AgencyOwner")
   assignments   AgencyMemberAssignment[]
-  invitesSent   AgencyInvite[]   @relation("InviteSender")
+  invitesSent   AgencyInvite[]           @relation("InviteSender")
   audits        Audit[]
   auditJobs     AuditJob[]
   fixJobs       FixJob[]
@@ -68,24 +68,24 @@ model VerificationToken {
 }
 
 model Agency {
-  id             String          @id @default(uuid())
-  name           String
-  slug           String          @unique
-  logo           String?
-  primaryColor   String          @default("#3b82f6")
-  ownerId        String
-  owner          User            @relation("AgencyOwner", fields: [ownerId], references: [id])
-  users          User[]          @relation("AgencyMembers")
-  clients        Client[]
-  subscription   Subscription?
-  invites        AgencyInvite[]
-  branding       AgencyBranding?
-  apiKeys        ApiKey[]
-  oauthClients   OAuthClient[]
-  apiWebhooks    ApiWebhook[]
-  domains        Domain[]
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  id           String          @id @default(uuid())
+  name         String
+  slug         String          @unique
+  logo         String?
+  primaryColor String          @default("#3b82f6")
+  ownerId      String
+  owner        User            @relation("AgencyOwner", fields: [ownerId], references: [id])
+  users        User[]          @relation("AgencyMembers")
+  clients      Client[]
+  subscription Subscription?
+  invites      AgencyInvite[]
+  branding     AgencyBranding?
+  apiKeys      ApiKey[]
+  oauthClients OAuthClient[]
+  apiWebhooks  ApiWebhook[]
+  domains      Domain[]
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
 }
 
 model ApiKey {
@@ -193,26 +193,26 @@ model AgencyBranding {
 }
 
 model Client {
-  id          String          @id @default(uuid())
-  name        String
-  domain      String?
-  agencyId    String
-  agency      Agency          @relation(fields: [agencyId], references: [id])
-  audits      Audit[]
-  actionPlans ActionPlan[]
-  gaps        Gap[]
-  settings    ClientSettings?
-  viewers     User[]          @relation("ClientViewers")
-  assignments            AgencyMemberAssignment[]
-  autonomousAuditConfig  AutonomousAuditConfig?
-  autonomousAuditRuns    AutonomousAuditRun[]
-  fixPipelineRuns        FixPipelineRun[]
-  taskProjects           TaskProject[]
-  auditJobs              AuditJob[]
-  fixJobs                FixJob[]
-  domains                Domain[]
-  createdAt              DateTime               @default(now())
-  updatedAt              DateTime               @updatedAt
+  id                    String                   @id @default(uuid())
+  name                  String
+  domain                String?
+  agencyId              String
+  agency                Agency                   @relation(fields: [agencyId], references: [id])
+  audits                Audit[]
+  actionPlans           ActionPlan[]
+  gaps                  Gap[]
+  settings              ClientSettings?
+  viewers               User[]                   @relation("ClientViewers")
+  assignments           AgencyMemberAssignment[]
+  autonomousAuditConfig AutonomousAuditConfig?
+  autonomousAuditRuns   AutonomousAuditRun[]
+  fixPipelineRuns       FixPipelineRun[]
+  taskProjects          TaskProject[]
+  auditJobs             AuditJob[]
+  fixJobs               FixJob[]
+  domains               Domain[]
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
 }
 
 model FixPipelineRun {
@@ -357,20 +357,20 @@ model Subscription {
 }
 
 model Audit {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   clientId    String
-  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  client      Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
   userId      String?
-  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
   brandName   String
   domain      String
   auditData   Json
-  gapCount    Int      @default(0)
-  isCompleted Boolean  @default(false)
+  gapCount    Int       @default(0)
+  isCompleted Boolean   @default(false)
   completedAt DateTime?
   gaps        Gap[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([clientId, updatedAt])
   @@index([userId])
@@ -431,24 +431,24 @@ model TaskProject {
 }
 
 model Task {
-  id                    String      @id @default(uuid())
-  projectId             String
-  project               TaskProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  title                 String
-  description           String      @default("")
-  status                String      @default("not_started")
-  priority              String      @default("medium")
-  gapId                 String?
-  checklist             Json        @default("[]")
-  dueDate               DateTime?
-  estimatedTime         String      @default("")
-  assignedTo            String?
-  suggestedActionPlan   String      @default("")
-  resourcesNeeded       Json        @default("[]")
-  sortOrder             Int         @default(0)
-  createdAt             DateTime    @default(now())
-  updatedAt             DateTime    @updatedAt
-  completedAt           DateTime?
+  id                  String      @id @default(uuid())
+  projectId           String
+  project             TaskProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title               String
+  description         String      @default("")
+  status              String      @default("not_started")
+  priority            String      @default("medium")
+  gapId               String?
+  checklist           Json        @default("[]")
+  dueDate             DateTime?
+  estimatedTime       String      @default("")
+  assignedTo          String?
+  suggestedActionPlan String      @default("")
+  resourcesNeeded     Json        @default("[]")
+  sortOrder           Int         @default(0)
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  completedAt         DateTime?
 
   @@index([projectId, sortOrder])
 }
@@ -525,21 +525,21 @@ enum AuditJobStatus {
 
 /// Agent API — async fix jobs (arq worker + Postgres state of record; HITL gate)
 model FixJob {
-  id        String        @id @default(uuid())
-  siteUrl   String        @map("site_url")
-  clientId  String?       @map("client_id")
-  client    Client?       @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  gapId     String?       @map("gap_id")
-  status    FixJobStatus  @default(QUEUED)
-  progress  Int           @default(0)
+  id        String       @id @default(uuid())
+  siteUrl   String       @map("site_url")
+  clientId  String?      @map("client_id")
+  client    Client?      @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  gapId     String?      @map("gap_id")
+  status    FixJobStatus @default(QUEUED)
+  progress  Int          @default(0)
   stage     String?
   error     String?
   input     Json?
   result    Json?
-  createdBy String        @map("created_by")
-  user      User          @relation(fields: [createdBy], references: [id], onDelete: Restrict)
-  createdAt DateTime      @default(now()) @map("created_at")
-  updatedAt DateTime      @updatedAt @map("updated_at")
+  createdBy String       @map("created_by")
+  user      User         @relation(fields: [createdBy], references: [id], onDelete: Restrict)
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
 
   @@index([createdBy])
   @@index([clientId])
@@ -595,4 +595,61 @@ model CitationContentIngest {
 
   @@index([siteId, createdAt])
   @@map("citation_content_ingest")
+}
+
+model CrawlerLog {
+  id         String   @id @default(cuid())
+  userId     String
+  clientId   String?
+  siteUrl    String
+  crawlerBot String
+  page       String
+  statusCode Int?
+  crawledAt  DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([clientId])
+  @@index([siteUrl])
+}
+
+model CrawlerSummary {
+  id           String   @id @default(cuid())
+  userId       String
+  clientId     String?
+  siteUrl      String
+  totalPages   Int      @default(0)
+  crawledPages Int      @default(0)
+  neverCrawled Json?
+  lastAnalysed DateTime @default(now())
+  summary      Json?
+
+  @@index([userId])
+  @@index([siteUrl])
+}
+
+model GscConnection {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  accessToken  String
+  refreshToken String
+  expiresAt    DateTime
+  properties   Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model SourceCache {
+  id        String   @id @default(cuid())
+  cacheKey  String   @unique
+  source    String
+  topic     String
+  brand     String?
+  payload   Json
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([cacheKey, expiresAt])
 }

@@ -25,6 +25,8 @@ import {
   FolderKanban,
   Building2,
   Users,
+  Bug,
+  Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AgencyRole } from "@prisma/client";
@@ -74,6 +76,19 @@ const navItems: NavItem[] = [
     icon: Brain,
     id: "nav-citation-intelligence",
   },
+  {
+    name: "Citation Monitor",
+    href: "/citation-monitor",
+    icon: Search,
+    id: "nav-citation-monitor",
+  },
+  {
+    name: "Crawler Logs",
+    href: "/crawler-logs",
+    icon: Bug,
+    id: "nav-crawler-logs",
+  },
+  { name: "KPIs", href: "/kpis", icon: BarChart3, id: "nav-kpis" },
   {
     name: "Agent Readiness",
     href: "/agent-readiness",
