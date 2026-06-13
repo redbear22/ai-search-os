@@ -1,23 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono&family=Space+Grotesk:wght@500;700&display=swap");
-
 .homepage {
-  --ink: #0b0e14;
-  --panel: #161b26;
-  --raised: #1e2535;
-  --line: #252c3b;
-  --mute: #8a94a6;
-  --paper: #f5f3ee;
-  --blue: #337bec;
-  --purple: #8054e8;
-  --win: #3fd18b;
-  --gap: #ff6b5e;
-  --warn: #ffb454;
-  --beam-soft: rgba(51, 123, 236, 0.12);
-  --grad: linear-gradient(135deg, #337bec, #8054e8);
-  --display: "Space Grotesk", system-ui, sans-serif;
-  --body: var(--font-inter), system-ui, sans-serif;
-  --mono: "JetBrains Mono", monospace;
-
   min-height: 100vh;
   background: var(--ink);
   color: var(--paper);
@@ -823,6 +804,156 @@
   }
 }
 
+.homepage .audit-preview-wrap {
+  max-width: 680px;
+  margin: 0 auto;
+}
+
+.homepage .audit-preview-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 24px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.homepage .audit-preview-sep {
+  border-top: 1px solid var(--line);
+  margin: 2px 0;
+}
+
+.homepage .audit-preview-gap-wrap {
+  position: relative;
+  max-height: 210px;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
+}
+
+.homepage .audit-preview-gap {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--ink);
+  overflow: hidden;
+}
+
+.homepage .audit-preview-gap-top {
+  display: flex;
+  gap: 14px;
+  padding: 16px 18px;
+  align-items: flex-start;
+}
+
+.homepage .audit-preview-sev {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(255, 107, 94, 0.13);
+  color: var(--gap);
+  border: 1px solid rgba(255, 107, 94, 0.25);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.homepage .audit-preview-gap-txt {
+  flex: 1;
+  min-width: 0;
+}
+
+.homepage .audit-preview-gap-txt h4 {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 15px;
+  margin-bottom: 4px;
+  letter-spacing: -0.01em;
+}
+
+.homepage .audit-preview-gap-txt p {
+  font-size: 13px;
+  color: var(--mute);
+  line-height: 1.45;
+}
+
+.homepage .audit-preview-gap-meta {
+  margin-left: auto;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.homepage .audit-preview-gap-meta .lab {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+
+.homepage .audit-preview-gap-meta .val {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--gap);
+}
+
+.homepage .audit-preview-fix {
+  border-top: 1px dashed var(--line);
+  padding: 12px 18px 18px;
+  background: linear-gradient(90deg, var(--beam-soft), transparent 60%);
+}
+
+.homepage .audit-preview-fix-tag {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--blue);
+  margin-bottom: 8px;
+}
+
+.homepage .audit-preview-fix-body {
+  font-size: 13px;
+  color: var(--mute);
+  line-height: 1.55;
+}
+
+.homepage .audit-preview-cta {
+  display: block;
+  width: 100%;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 15px;
+  padding: 14px 24px;
+  border-radius: 10px;
+  background: var(--grad);
+  color: #08111f;
+  text-align: center;
+  margin-top: 4px;
+  box-shadow: 0 12px 30px -12px var(--blue);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.homepage .audit-preview-cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 36px -12px var(--blue);
+}
+
+@media (max-width: 600px) {
+  .homepage .audit-preview-gap-top {
+    flex-wrap: wrap;
+  }
+
+  .homepage .audit-preview-gap-meta {
+    margin-left: 0;
+    text-align: left;
+    width: 100%;
+  }
+}
+
 .homepage .agency-layout {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1188,6 +1319,15 @@
   color: var(--win);
   margin-top: 1px;
   flex-shrink: 0;
+}
+
+.homepage .pf.no {
+  color: var(--mute);
+}
+
+.homepage .pf.no::before {
+  content: "–";
+  color: var(--line);
 }
 
 .homepage .price-cta {

@@ -4,6 +4,24 @@
 
 @layer base {
   :root {
+    /* Brand palette (shared across marketing pages) */
+    --ink: #0b0e14;
+    --panel: #161b26;
+    --raised: #1e2535;
+    --line: #252c3b;
+    --mute: #8a94a6;
+    --paper: #f5f3ee;
+    --blue: #337bec;
+    --purple: #8054e8;
+    --win: #3fd18b;
+    --gap: #ff6b5e;
+    --warn: #ffb454;
+    --beam-soft: rgba(51, 123, 236, 0.12);
+    --grad: linear-gradient(135deg, #337bec, #8054e8);
+    --display: var(--font-space-grotesk), system-ui, sans-serif;
+    --body: var(--font-inter), system-ui, sans-serif;
+    --mono: var(--font-jetbrains-mono), monospace;
+
     --background: 222 47% 6%;
     --foreground: 210 40% 96%;
     --card: 222 40% 9%;

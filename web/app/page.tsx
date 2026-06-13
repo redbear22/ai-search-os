@@ -85,7 +85,7 @@ const comparison: {
     semrush: false,
   },
   {
-    feature: "AI-generated fixes",
+    feature: "AI-generated fixes (the moat)",
     moat: true,
     aiSearchRank: true,
     monitoringTools: false,
@@ -178,6 +178,7 @@ export default function LandingPage() {
 
     const timer = window.setTimeout(() => {
       root.querySelectorAll<HTMLElement>(".sig-bar-fill").forEach((bar) => {
+        if (bar.closest(".audit-preview-card")) return;
         const targetWidth = bar.dataset.width ?? bar.style.width;
         bar.style.width = "0";
         window.setTimeout(() => {
@@ -485,6 +486,70 @@ export default function LandingPage() {
         </div>
       </section>
 
+      <section className="sec-pad" id="audit-preview">
+        <div className="wrap">
+          <div className="sec-head">
+            <div className="sec-eyebrow">Real audit output</div>
+            <h2 className="sec-h">This is what your competitors don&apos;t want you to see.</h2>
+            <p className="sec-sub">
+              A real audit of a sample brand — the platform verdicts, the gaps, and the fixes
+              already written.
+            </p>
+          </div>
+          <div className="audit-preview-wrap">
+            <div className="audit-preview-card">
+              <div className="signal-query">
+                Query: <b>&ldquo;best project management for remote teams&rdquo;</b>
+              </div>
+              {signalPlatforms.map((platform) => (
+                <div key={`preview-${platform.name}`} className="signal-row">
+                  <span className="sig-platform">{platform.name}</span>
+                  <div className="sig-bar-track">
+                    <div
+                      className="sig-bar-fill"
+                      style={{ width: platform.width, background: platform.color, transition: "none" }}
+                    />
+                  </div>
+                  <span className={`sig-verdict ${platform.className}`}>{platform.verdict}</span>
+                </div>
+              ))}
+              <div className="signal-footer">
+                <span className="sig-sov">
+                  Share of Voice: <b>12%</b> &nbsp;·&nbsp; 9 gaps detected
+                </span>
+              </div>
+              <div className="audit-preview-sep" />
+              <div className="audit-preview-gap-wrap">
+                <div className="audit-preview-gap">
+                  <div className="audit-preview-gap-top">
+                    <span className="audit-preview-sev">High</span>
+                    <div className="audit-preview-gap-txt">
+                      <h4>No comparison content for &ldquo;remote teams&rdquo;</h4>
+                      <p>Competitors own the head-to-head pages AI pulls from.</p>
+                    </div>
+                    <div className="audit-preview-gap-meta">
+                      <div className="lab">Est. SoV cost</div>
+                      <div className="val">−14%</div>
+                    </div>
+                  </div>
+                  <div className="audit-preview-fix">
+                    <div className="audit-preview-fix-tag">AI-written fix</div>
+                    <div className="audit-preview-fix-body">
+                      &ldquo;FlowStack vs the field: project management built for remote teams&rdquo;
+                      — a comparison page structured for AI retrieval: explicit feature table,
+                      plain-language verdict per use-case, schema markup for FAQ.
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <Link href="/sample-audit" className="audit-preview-cta">
+                See all 9 gaps and fixes →
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section className="sec-pad" id="agency">
         <div className="wrap">
           <div className="agency-layout">
@@ -628,14 +693,18 @@ export default function LandingPage() {
               <div className="price-name">Free</div>
               <div className="price-amount">
                 <span className="free-num">$0</span>
+                <span className="per">/forever</span>
               </div>
               <div className="price-desc">
-                Run one audit. See what AI sees. No signup required at /free-audit.
+                One audit across all four platforms. No credit card required.
               </div>
               <div className="price-features">
-                <div className="pf">1 free audit</div>
-                <div className="pf">All 4 platforms scanned</div>
+                <div className="pf">1 audit</div>
+                <div className="pf">All 4 platforms</div>
                 <div className="pf">Browser-only save</div>
+                <div className="pf no">No credit card</div>
+                <div className="pf no">No cloud save</div>
+                <div className="pf no">No AI fixes</div>
               </div>
               <Link href="/free-audit" className="price-cta ghost">
                 Run Free Audit
@@ -679,6 +748,10 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
+          <p className="price-footer reveal">
+            Enterprise (custom domains, SSO, SLA) —{" "}
+            <a href="mailto:support@aisearchrank.ai">contact us</a>
+          </p>
           <div className="price-footnotes reveal">
             <p>{PRICING_TRIAL_FOOTNOTE}</p>
             <p>{DOMAIN_SLOT_FOOTNOTE}</p>

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
@@ -12,6 +12,18 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { cn } from "@/lib/utils";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  weight: ["500", "700"],
+  variable: "--font-space-grotesk",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["400"],
+  variable: "--font-jetbrains-mono",
+});
 
 export const metadata: Metadata = {
   title: {
@@ -50,7 +62,11 @@ export default async function RootLayout({
   const session = await getSession();
 
   return (
-    <html lang="en" className={cn("dark", inter.variable)} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={cn("dark", inter.variable, spaceGrotesk.variable, jetbrainsMono.variable)}
+      suppressHydrationWarning
+    >
       <body className={cn(inter.className, "bg-background text-foreground")}>
         <Providers session={session}>
           <ErrorBoundary>
